@@ -8,27 +8,31 @@
 </head>
 <body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
     <div id="app"></div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // SETUP: Replace these with your Supabase credentials
+        // --- 🔒 SECURITY WARNING: Replace these with your Supabase credentials ---
+        // Your Anon Key is public, so ensure you have Row Level Security (RLS) enabled
+        // in your Supabase project to protect your data!
         const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2aGpuY29iaXZ0c3hlZXF2bHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MDAyMTUsImV4cCI6MjA3NzM3NjIxNX0.NZKMBV8WKbef8ADsWAYlgtWlTJsiLqo9T8tjruuy7_k';
-        
+
         let supabase = null;
         let useLocalStorage = true;
 
         if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY_HERE') {
             try {
+                // Initialize Supabase Client
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 useLocalStorage = false;
             } catch (e) {
-                console.log('Using local storage mode');
+                console.log('Supabase initialization failed. Using local storage mode.');
             }
         }
 
         const app = {
             currentView: 'welcome',
+            // Default selected period, will be used to filter dates
             selectedPeriod: 'jul-sep-2025',
             showModal: false,
             selectedSlot: null,
@@ -37,10 +41,10 @@
             signups: {},
 
             periods: [
-                { id: 'jan-mar-2025', label: 'January, February, March 2025' },
-                { id: 'apr-jun-2025', label: 'April, May, June 2025' },
-                { id: 'jul-sep-2025', label: 'July, August, September 2025' },
-                { id: 'oct-dec-2025', label: 'October, November, December 2025' },
+                { id: 'jan-mar-2025', label: 'January - March 2025', start: '2025-01-01' },
+                { id: 'apr-jun-2025', label: 'April - June 2025', start: '2025-04-01' },
+                { id: 'jul-sep-2025', label: 'July - September 2025', start: '2025-07-03' }, // Set to a Thursday start for Thursday/Saturday view
+                { id: 'oct-dec-2025', label: 'October - December 2025', start: '2025-10-02' },
             ],
 
             roles: {
@@ -65,11 +69,15 @@
                 ]
             },
 
+            // --- CORE APP METHODS ---
+
             async init() {
                 await this.loadSignups();
                 this.render();
-                
+                this.attachEventListeners(); // Attach event listeners after initial render
+
                 if (!useLocalStorage && supabase) {
+                    // Set up Supabase Realtime subscription
                     supabase.channel('signups').on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'volunteer_signups' }, 
                         () => this.loadSignups()
@@ -77,272 +85,17 @@
                 }
             },
 
-            getWeekDates() {
-                const weeks = [];
-                const startDate = new Date('2025-07-03');
-                for (let i = 0; i < 12; i++) {
-                    const date = new Date(startDate);
-                    date.setDate(startDate.getDate() + (i * 7));
-                    weeks.push({
-                        date: date.toISOString().split('T')[0],
-                        label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long' }),
-                        weekLabel: `${date.getDate()}-${new Date(date.getTime() + 86400000).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long' })}`
-                    });
-                }
-                return weeks;
-            },
+            attachEventListeners() {
+                // Use event delegation for buttons inside the app container
+                document.getElementById('app').addEventListener('click', (event) => {
+                    const target = event.target.closest('button, select');
 
-            async loadSignups() {
-                if (useLocalStorage) {
-                    const saved = localStorage.getItem('uts-roster');
-                    if (saved) this.signups = JSON.parse(saved);
-                } else {
-                    try {
-                        const { data, error } = await supabase.from('volunteer_signups').select('*');
-                        if (!error && data) {
-                            this.signups = {};
-                            data.forEach(s => {
-                                if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
-                                if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
-                                if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
-                                this.signups[s.roster_type][s.shift_date][s.role_id].push({
-                                    id: s.id,
-                                    name: s.volunteer_name,
-                                    email: s.volunteer_email
-                                });
-                            });
-                        }
-                    } catch (e) {
-                        console.error('Error loading signups:', e);
+                    if (!target) return;
+
+                    // Navigation Buttons
+                    if (target.dataset.view) {
+                        this.currentView = target.dataset.view;
+                        this.render();
                     }
-                }
-                this.render();
-            },
 
-            async addSignup() {
-                if (!this.volunteerName.trim()) return;
-                const { view, dateStr, roleId } = this.selectedSlot;
-                
-                if (useLocalStorage) {
-                    if (!this.signups[view]) this.signups[view] = {};
-                    if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
-                    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-                    this.signups[view][dateStr][roleId].push({
-                        name: this.volunteerName.trim(),
-                        email: this.volunteerEmail.trim()
-                    });
-                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                } else {
-                    try {
-                        const { error } = await supabase.from('volunteer_signups').insert([{
-                            roster_type: view,
-                            shift_date: dateStr,
-                            role_id: roleId,
-                            volunteer_name: this.volunteerName.trim(),
-                            volunteer_email: this.volunteerEmail.trim()
-                        }]);
-                        if (error) throw error;
-                        await this.loadSignups();
-                    } catch (e) {
-                        alert('Error signing up: ' + e.message);
-                        return;
-                    }
-                }
-                
-                this.showModal = false;
-                this.volunteerName = '';
-                this.volunteerEmail = '';
-                this.render();
-            },
-
-            async removeSignup(view, dateStr, roleId, signup) {
-                if (!confirm(`Remove ${signup.name} from this shift?`)) return;
-                
-                if (useLocalStorage) {
-                    this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
-                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                } else {
-                    try {
-                        const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
-                        if (error) throw error;
-                        await this.loadSignups();
-                    } catch (e) {
-                        alert('Error removing signup: ' + e.message);
-                    }
-                }
-                this.render();
-            },
-
-            getSignups(view, dateStr, roleId) {
-                return this.signups[view]?.[dateStr]?.[roleId] || [];
-            },
-
-            render() {
-                const appEl = document.getElementById('app');
-                
-                if (this.currentView === 'welcome') {
-                    appEl.innerHTML = this.renderWelcome();
-                } else {
-                    appEl.innerHTML = this.renderRoster();
-                }
-            },
-
-            renderWelcome() {
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-4xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-xl p-8 mb-6">
-                                <div class="flex items-center gap-3 mb-6">
-                                    <svg class="w-12 h-12 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                                    <div>
-                                        <h1 class="text-4xl font-bold text-gray-800">Under the Stars</h1>
-                                        <p class="text-xl text-gray-600">Meal Rosters</p>
-                                    </div>
-                                </div>
-
-                                <div class="prose max-w-none mb-8 text-gray-700">
-                                    <p class="text-lg mb-4">Welcome! 😊</p>
-                                    <p class="mb-4">Thanks for choosing to be a volunteer for Under the Stars! We ask that all volunteers give their time just once a month. We know some people like to help more often, and that's OK! Don't burn yourself out - we want you around for the long haul! 🙂</p>
-                                    
-                                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
-                                        <h3 class="font-bold text-blue-900 mb-2">To sign up:</h3>
-                                        <ol class="list-decimal list-inside space-y-2 text-blue-800">
-                                            <li>Choose the month, day (Thursday/Saturday) and task you would like to do</li>
-                                            <li>Find the date you're available and enter your name in the appropriate field</li>
-                                        </ol>
-                                    </div>
-
-                                    <p class="mb-4">If you ever have any questions, concerns or suggestions, please let us know.</p>
-                                    <p class="mb-4"><strong>Our Meal Managers</strong> (all available via messenger):<br/>✨ Ani Stace, ✨ Carol Machai, ✨ Keiran Stuart, ✨ Aroha Kelly, ✨ Rose Kent-Wilson, ✨ Adrian De Souza</p>
-                                    <p class="mb-4"><strong>Our venue:</strong> Cliff Rd community hall, 45 Cliff Rd.</p>
-                                    <p class="mb-2">On Thursdays, FREE PARKING is available at the front of the hall in the yellow parking spaces or on Cliff Rd. Anywhere else you may get fined.</p>
-                                    <p class="mb-4">On Saturdays all areas are free parking.</p>
-                                    <p class="text-sm text-gray-600">*Long hair must be tied back.<br/>*Closed toe shoes must be worn when volunteering at the hall</p>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg">
-                                        Thursday Hall Help →
-                                    </button>
-                                    <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:from-orange-600 hover:to-orange-700 transition shadow-lg">
-                                        Saturday Hall Help →
-                                    </button>
-                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-pink-600 hover:to-pink-700 transition shadow-lg">
-                                        Additional Weekly Tasks →
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-
-            renderRoster() {
-                const dates = this.getWeekDates();
-                const roles = this.roles[this.currentView] || [];
-                const title = this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
-                             this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 
-                             'Additional Weekly Tasks';
-
-                let infoBox = '';
-                if (this.currentView === 'thursday-hall') {
-                    infoBox = '<h3 class="font-bold text-blue-900 mb-2">Thursday Hall Help - 10am to 1:30pm</h3><p class="text-sm text-blue-800">Help is needed at the hall from 10am to 1:30pm. Volunteer shifts are 2-3 hours each, excluding managers.</p>';
-                } else if (this.currentView === 'saturday-hall') {
-                    infoBox = '<h3 class="font-bold text-orange-900 mb-2">Saturday Hall Help - 2:45pm to 6:30pm</h3><p class="text-sm text-orange-800">Help is needed at the hall from 2:45pm to 6:30pm. Volunteer shifts are 2-3 hours each, excluding managers.</p>';
-                } else {
-                    infoBox = '<h3 class="font-bold text-pink-900 mb-2">Additional Weekly Tasks</h3><ul class="text-sm text-pink-800 space-y-1 list-disc list-inside"><li>Wednesday: Use UTS van to pick up foods (ideally 2 volunteers)</li><li>Thursday/Saturday: Bakers Delight pick up end of day breads</li><li>Friday: Cheesecake Shop (3-6pm)</li></ul>';
-                }
-
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-7xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                                <button onclick="app.currentView='welcome'; app.render();" class="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                    Back to Overview
-                                </button>
-                                <h1 class="text-3xl font-bold text-gray-800 mb-4">${title}</h1>
-                                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">${infoBox}</div>
-                            </div>
-
-                            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                                <div class="overflow-x-auto">
-                                    <table class="w-full">
-                                        <thead>
-                                            <tr class="bg-gray-800 text-white">
-                                                <th class="p-3 text-left sticky left-0 bg-gray-800 z-10 min-w-[220px]">Role</th>
-                                                ${dates.map(d => `<th class="p-3 text-center min-w-[140px]">${this.currentView === 'weekly-tasks' ? d.weekLabel : d.label}</th>`).join('')}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${roles.map((role, idx) => `
-                                                <tr class="${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                                    <td class="p-3 border-r border-gray-200 sticky left-0 z-10 bg-inherit">
-                                                        <div class="font-semibold text-gray-800">${role.name}</div>
-                                                        <div class="text-xs text-gray-500">${role.time}</div>
-                                                        <div class="text-xs text-gray-500">${role.capacity} needed</div>
-                                                        ${role.note ? `<div class="text-xs text-gray-400">${role.note}</div>` : ''}
-                                                    </td>
-                                                    ${dates.map(d => {
-                                                        const signups = this.getSignups(this.currentView, d.date, role.id);
-                                                        const isFull = signups.length >= role.capacity;
-                                                        return `
-                                                            <td class="p-2 border border-gray-200">
-                                                                <div class="space-y-1">
-                                                                    ${signups.map(s => `
-                                                                        <div class="bg-green-100 border border-green-300 rounded px-2 py-1 text-sm flex items-center justify-between group">
-                                                                            <span class="font-medium text-green-800">${s.name}</span>
-                                                                            <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s).replace(/'/g, "&apos;")})' class="text-red-600 hover:text-red-800 text-xs">✕</button>
-                                                                        </div>
-                                                                    `).join('')}
-                                                                    ${!isFull ? `
-                                                                        <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-sm text-indigo-600 font-medium">+ Sign Up</button>
-                                                                    ` : `
-                                                                        <div class="w-full bg-gray-100 border border-gray-300 rounded px-2 py-1 text-sm text-gray-500 text-center font-medium">Full</div>
-                                                                    `}
-                                                                </div>
-                                                            </td>
-                                                        `;
-                                                    }).join('')}
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        ${this.showModal ? `
-                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this){app.showModal=false; app.render();}">
-                                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                                    <h3 class="text-xl font-bold text-gray-800 mb-4">Sign Up for Shift</h3>
-                                    <div class="mb-4 p-3 bg-gray-50 rounded">
-                                        <div class="text-sm text-gray-600"><strong>Date:</strong> ${this.selectedSlot.dateLabel}</div>
-                                        <div class="text-sm text-gray-600"><strong>Role:</strong> ${this.selectedSlot.roleName}</div>
-                                    </div>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-semibold text-gray-700 mb-1">Your Name *</label>
-                                            <input type="text" id="volName" placeholder="Enter your name..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerName}">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-semibold text-gray-700 mb-1">Email (Optional)</label>
-                                            <input type="email" id="volEmail" placeholder="your.email@example.com" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerEmail}">
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-3 mt-6">
-                                        <button onclick="app.showModal=false; app.render();" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300">Cancel</button>
-                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.volunteerEmail=document.getElementById('volEmail').value; app.addSignup();" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700">Sign Up</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }
-        };
-
-        window.addEventListener('DOMContentLoaded', () => app.init());
-    </script>
-</body>
-</html>
+                    // Sign Up Button (R

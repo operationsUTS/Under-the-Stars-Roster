@@ -31,20 +31,17 @@
             selectedSlot: null,
             volunteerName: '',
             signups: {},
+            connectionStatus: 'checking',
+            lastSaveTime: null,
+            backupCount: 5,
 
             // ⭐ TO ADD NEW QUARTERS: Just copy a line below and change the year/months
-            // Format: { id: 'unique-id', label: 'Display Name', months: [1,2,3], year: 2026 }
             periods: [
                 { id: 'dec-2025', label: 'December 2025', months: [12], year: 2025 },
                 { id: 'jan-mar-2026', label: 'January - March 2026', months: [1,2,3], year: 2026 },
                 { id: 'apr-jun-2026', label: 'April - June 2026', months: [4,5,6], year: 2026 },
                 { id: 'jul-sep-2026', label: 'July - September 2026', months: [7,8,9], year: 2026 },
                 { id: 'oct-dec-2026', label: 'October - December 2026', months: [10,11,12], year: 2026 },
-                // 📝 ADD 2027 QUARTERS HERE WHEN NEEDED (copy format above):
-                // { id: 'jan-mar-2027', label: 'January - March 2027', months: [1,2,3], year: 2027 },
-                // { id: 'apr-jun-2027', label: 'April - June 2027', months: [4,5,6], year: 2027 },
-                // { id: 'jul-sep-2027', label: 'July - September 2027', months: [7,8,9], year: 2027 },
-                // { id: 'oct-dec-2027', label: 'October - December 2027', months: [10,11,12], year: 2027 },
             ],
 
             roles: {
@@ -70,8 +67,84 @@
                 ]
             },
             
-            connectionStatus: 'checking',
-            lastSaveTime: null,
+            validateData(data) {
+                if (!data || typeof data !== 'object') return false;
+                
+                for (let rosterType in data) {
+                    if (!['thursday-hall', 'saturday-hall', 'weekly-tasks'].includes(rosterType)) continue;
+                    
+                    const dates = data[rosterType];
+                    if (typeof dates !== 'object') return false;
+                    
+                    for (let date in dates) {
+                        const roles = dates[date];
+                        if (typeof roles !== 'object') return false;
+                        
+                        for (let roleId in roles) {
+                            const signups = roles[roleId];
+                            if (!Array.isArray(signups)) return false;
+                            
+                            for (let signup of signups) {
+                                if (!signup.name || typeof signup.name !== 'string') return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            },
+            
+            createBackup() {
+                try {
+                    const timestamp = new Date().toISOString();
+                    const backup = {
+                        data: this.signups,
+                        timestamp: timestamp,
+                        version: '1.0'
+                    };
+                    
+                    const backups = this.getBackups();
+                    backups.push(backup);
+                    
+                    if (backups.length > this.backupCount) {
+                        backups.shift();
+                    }
+                    
+                    localStorage.setItem('uts-roster-backups', JSON.stringify(backups));
+                    console.log('Backup created:', timestamp);
+                } catch (e) {
+                    console.error('Backup creation failed:', e);
+                }
+            },
+            
+            getBackups() {
+                try {
+                    const stored = localStorage.getItem('uts-roster-backups');
+                    if (!stored) return [];
+                    const backups = JSON.parse(stored);
+                    return Array.isArray(backups) ? backups : [];
+                } catch (e) {
+                    console.error('Error reading backups:', e);
+                    return [];
+                }
+            },
+            
+            restoreFromBackup() {
+                const backups = this.getBackups();
+                
+                for (let i = backups.length - 1; i >= 0; i--) {
+                    const backup = backups[i];
+                    if (backup.data && this.validateData(backup.data)) {
+                        this.signups = backup.data;
+                        this.showNotification('Restored from backup: ' + new Date(backup.timestamp).toLocaleString(), 'success');
+                        console.log('Restored from backup:', backup.timestamp);
+                        return true;
+                    }
+                }
+                
+                this.showNotification('No valid backups found. Starting fresh.', 'warning');
+                this.signups = {};
+                return false;
+            },
 
             async init() {
                 await this.checkConnection();
@@ -85,8 +158,8 @@
                     ).subscribe();
                 }
                 
-                // Auto-backup to localStorage every 30 seconds
-                setInterval(() => this.autoBackup(), 30000);
+                setInterval(() => this.autoBackup(), 300000);
+                this.createBackup();
             },
             
             async checkConnection() {
@@ -104,10 +177,11 @@
             
             autoBackup() {
                 try {
-                    localStorage.setItem('uts-roster-backup', JSON.stringify({
-                        data: this.signups,
-                        timestamp: new Date().toISOString()
-                    }));
+                    if (!this.validateData(this.signups)) {
+                        console.error('Data validation failed - backup skipped');
+                        return;
+                    }
+                    this.createBackup();
                 } catch (e) {
                     console.error('Auto-backup failed:', e);
                 }
@@ -116,7 +190,7 @@
             showNotification(message, type = 'success') {
                 const notif = document.createElement('div');
                 notif.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
-                    type === 'success' ? 'bg-green-600' : 'bg-red-600'
+                    type === 'success' ? 'bg-green-600' : type === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
                 } text-white font-semibold`;
                 notif.textContent = message;
                 document.body.appendChild(notif);
@@ -151,7 +225,23 @@
             async loadSignups() {
                 if (useLocalStorage) {
                     const saved = localStorage.getItem('uts-roster');
-                    if (saved) this.signups = JSON.parse(saved);
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (this.validateData(parsed)) {
+                                this.signups = parsed;
+                                this.createBackup();
+                            } else {
+                                console.error('Loaded data is corrupted. Attempting recovery...');
+                                this.showNotification('Data corruption detected. Recovering...', 'error');
+                                this.restoreFromBackup();
+                            }
+                        } catch (e) {
+                            console.error('Error parsing data:', e);
+                            this.showNotification('Data corrupted. Recovering from backup...', 'error');
+                            this.restoreFromBackup();
+                        }
+                    }
                 } else {
                     let retries = 3;
                     while (retries > 0) {
@@ -169,21 +259,22 @@
                                     name: s.volunteer_name
                                 });
                             });
+                            
+                            if (!this.validateData(this.signups)) {
+                                throw new Error('Loaded data failed validation');
+                            }
+                            
                             this.connectionStatus = 'connected';
                             this.lastSaveTime = new Date();
+                            this.createBackup();
                             break;
                         } catch (e) {
                             retries--;
                             if (retries === 0) {
                                 console.error('Load failed after retries:', e);
                                 this.connectionStatus = 'error';
-                                // Fallback to backup
-                                const backup = localStorage.getItem('uts-roster-backup');
-                                if (backup) {
-                                    const parsed = JSON.parse(backup);
-                                    this.signups = parsed.data;
-                                    this.showNotification('Using offline backup', 'warning');
-                                }
+                                this.showNotification('Could not load data. Using local backup.', 'error');
+                                this.restoreFromBackup();
                             } else {
                                 await new Promise(r => setTimeout(r, 1000));
                             }
@@ -197,24 +288,53 @@
                 if (!this.volunteerName.trim()) return alert('Please enter your name');
                 const { view, dateStr, roleId } = this.selectedSlot;
                 
+                const originalSignups = JSON.parse(JSON.stringify(this.signups));
+                
                 if (useLocalStorage) {
-                    if (!this.signups[view]) this.signups[view] = {};
-                    if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
-                    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-                    this.signups[view][dateStr][roleId].push({ name: this.volunteerName.trim() });
-                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                    this.showNotification('Signed up successfully!');
+                    try {
+                        if (!this.signups[view]) this.signups[view] = {};
+                        if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
+                        if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+                        this.signups[view][dateStr][roleId].push({ name: this.volunteerName.trim() });
+                        
+                        if (!this.validateData(this.signups)) {
+                            throw new Error('Data validation failed');
+                        }
+                        
+                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                        this.createBackup();
+                        this.showNotification('Signed up successfully!');
+                    } catch (e) {
+                        this.signups = originalSignups;
+                        this.showNotification('Error signing up: ' + e.message, 'error');
+                        return;
+                    }
                 } else {
                     let retries = 3;
                     while (retries > 0) {
                         try {
-                            const { error } = await supabase.from('volunteer_signups').insert({
+                            const { data, error } = await supabase.from('volunteer_signups').insert({
                                 roster_type: view,
                                 shift_date: dateStr,
                                 role_id: roleId,
                                 volunteer_name: this.volunteerName.trim()
-                            });
+                            }).select();
+                            
                             if (error) throw error;
+                            
+                            const { data: verification, error: verifyError } = await supabase
+                                .from('volunteer_signups')
+                                .select('*')
+                                .eq('roster_type', view)
+                                .eq('shift_date', dateStr)
+                                .eq('role_id', roleId)
+                                .eq('volunteer_name', this.volunteerName.trim())
+                                .limit(1);
+                            
+                            if (verifyError || !verification || verification.length === 0) {
+                                throw new Error('Write verification failed');
+                            }
+                            
                             await this.loadSignups();
                             this.showNotification('Signed up successfully!');
                             break;
@@ -237,16 +357,41 @@
             async removeSignup(view, dateStr, roleId, signup) {
                 if (!confirm(`Remove ${signup.name}?`)) return;
                 
+                const originalSignups = JSON.parse(JSON.stringify(this.signups));
+                
                 if (useLocalStorage) {
-                    this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
-                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                    this.showNotification('Removed successfully');
+                    try {
+                        this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
+                        
+                        if (!this.validateData(this.signups)) {
+                            throw new Error('Data validation failed');
+                        }
+                        
+                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                        this.createBackup();
+                        this.showNotification('Removed successfully');
+                    } catch (e) {
+                        this.signups = originalSignups;
+                        this.showNotification('Error removing: ' + e.message, 'error');
+                        return;
+                    }
                 } else {
                     let retries = 3;
                     while (retries > 0) {
                         try {
                             const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
                             if (error) throw error;
+                            
+                            const { data: verification, error: verifyError } = await supabase
+                                .from('volunteer_signups')
+                                .select('*')
+                                .eq('id', signup.id)
+                                .limit(1);
+                            
+                            if (verifyError || (verification && verification.length > 0)) {
+                                throw new Error('Delete verification failed');
+                            }
+                            
                             await this.loadSignups();
                             this.showNotification('Removed successfully');
                             break;
@@ -265,55 +410,6 @@
 
             getSignups(view, dateStr, roleId) {
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
-            },
-
-            exportData() {
-                const data = JSON.stringify(this.signups, null, 2);
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `roster-backup-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-            },
-
-            importData(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const imported = JSON.parse(event.target.result);
-                        if (confirm('Replace all data with backup?')) {
-                            this.signups = imported;
-                            if (useLocalStorage) {
-                                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                            } else {
-                                await supabase.from('volunteer_signups').delete().neq('id', 0);
-                                for (let view in imported) {
-                                    for (let date in imported[view]) {
-                                        for (let role in imported[view][date]) {
-                                            for (let signup of imported[view][date][role]) {
-                                                await supabase.from('volunteer_signups').insert({
-                                                    roster_type: view,
-                                                    shift_date: date,
-                                                    role_id: role,
-                                                    volunteer_name: signup.name
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            await this.loadSignups();
-                            alert('Backup restored!');
-                        }
-                    } catch (error) {
-                        alert('Invalid backup file');
-                    }
-                };
-                reader.readAsText(file);
             },
 
             render() {
@@ -347,10 +443,11 @@
                                         <ol class="list-decimal list-inside space-y-1 text-blue-800">
                                             <li>Choose your preferred day and task</li>
                                             <li>Find an available date and enter your name</li>
+                                            <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations2@underthestars.org.nz" class="underline">operations2@underthestars.org.nz</a> as soon as possible</strong></li>
                                         </ol>
                                     </div>
 
-                                    <p><strong>Meal Managers:</strong> Ani Stace, Carol Machai, Keiran Stuart, Aroha Kelly, Rose Kent-Wilson, Adrian De Souza</p>
+                                    <p><strong>Meal Managers:</strong> Ani Stace, Carol Machai, Keiran Stuart, Carl Fenton, Rose Kent-Wilson, Adrian De Souza</p>
                                     <p><strong>Venue:</strong> Cliff Rd community hall, 45 Cliff Rd</p>
                                     <p class="text-sm">*Long hair tied back. Closed toe shoes required.</p>
                                 </div>

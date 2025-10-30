@@ -1,19 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Under the Stars Volunteer Roster</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
-    <div id="app"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // --- 🔒 SECURITY WARNING: Replace these with your Supabase credentials ---
-        // Your Anon Key is public, so ensure you have Row Level Security (RLS) enabled
-        // in your Supabase project to protect your data!
         const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2aGpuY29iaXZ0c3hlZXF2bHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MDAyMTUsImV4cCI6MjA3NzM3NjIxNX0.NZKMBV8WKbef8ADsWAYlgtWlTJsiLqo9T8tjruuy7_k';
 
@@ -22,7 +9,6 @@
 
         if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY_HERE') {
             try {
-                // Initialize Supabase Client
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 useLocalStorage = false;
             } catch (e) {
@@ -32,7 +18,6 @@
 
         const app = {
             currentView: 'welcome',
-            // Default selected period, will be used to filter dates
             selectedPeriod: 'jul-sep-2025',
             showModal: false,
             selectedSlot: null,
@@ -43,7 +28,8 @@
             periods: [
                 { id: 'jan-mar-2025', label: 'January - March 2025', start: '2025-01-01' },
                 { id: 'apr-jun-2025', label: 'April - June 2025', start: '2025-04-01' },
-                { id: 'jul-sep-2025', label: 'July - September 2025', start: '2025-07-03' }, // Set to a Thursday start for Thursday/Saturday view
+                // Adjusted start date to ensure the Thursday/Saturday view starts on a Thursday in that month
+                { id: 'jul-sep-2025', label: 'July - September 2025', start: '2025-07-03' }, 
                 { id: 'oct-dec-2025', label: 'October - December 2025', start: '2025-10-02' },
             ],
 
@@ -72,12 +58,11 @@
             // --- CORE APP METHODS ---
 
             async init() {
-                await this.loadSignups();
-                this.render();
-                this.attachEventListeners(); // Attach event listeners after initial render
-
+                await this.loadSignups(); 
+                this.render(); 
+                this.attachEventListeners(); 
+                
                 if (!useLocalStorage && supabase) {
-                    // Set up Supabase Realtime subscription
                     supabase.channel('signups').on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'volunteer_signups' }, 
                         () => this.loadSignups()
@@ -86,16 +71,249 @@
             },
 
             attachEventListeners() {
-                // Use event delegation for buttons inside the app container
-                document.getElementById('app').addEventListener('click', (event) => {
-                    const target = event.target.closest('button, select');
+                const appEl = document.getElementById('app');
+                if (!appEl) {
+                    console.error("Critical Error: 'app' element not found.");
+                    return;
+                }
+                
+                // Use event delegation for all dynamic buttons/elements
+                appEl.addEventListener('click', (event) => {
+                    const target = event.target.closest('button, select, [data-action]');
 
                     if (!target) return;
-
-                    // Navigation Buttons
+                    
+                    // --- Navigation Buttons (Welcome page and Back button) ---
                     if (target.dataset.view) {
                         this.currentView = target.dataset.view;
+                        this.selectedPeriod = this.periods[2].id;
                         this.render();
                     }
 
-                    // Sign Up Button (R
+                    // --- Sign Up Button (Roster View) ---
+                    if (target.dataset.action === 'open-modal') {
+                        this.selectedSlot = {
+                            view: target.dataset.view,
+                            dateStr: target.dataset.date,
+                            roleId: target.dataset.role,
+                            dateLabel: target.dataset.datelabel,
+                            roleName: target.dataset.rolename
+                        };
+                        this.showModal = true;
+                        this.renderModalContainer(); // Render modal separately
+                    }
+                    
+                    // --- Remove Signup Button ---
+                    if (target.dataset.action === 'remove-signup') {
+                        const { view, date, role, id } = target.dataset;
+                        const signup = this.getSignups(view, date, role).find(s => s.id === id || (useLocalStorage && s.name === target.dataset.name));
+                        if (signup) {
+                            this.removeSignup(view, date, role, signup);
+                        }
+                    }
+                });
+                
+                // Listener for the Modal container (which is attached to document.body)
+                document.body.addEventListener('click', (event) => {
+                    const target = event.target.closest('[data-action]');
+                    const modalContainer = document.getElementById('modal-container');
+                    
+                    if (!modalContainer) return; 
+
+                    // Close modal when clicking background (handles fixed inset-0 div)
+                    if (event.target === modalContainer.firstChild && event.target.classList.contains('bg-opacity-50')) {
+                        this.showModal = false;
+                        this.volunteerName = '';
+                        this.volunteerEmail = '';
+                        this.renderModalContainer();
+                        this.renderRosterTable(); 
+                    }
+
+                    if (!target) return;
+                    
+                    if (target.dataset.action === 'cancel-signup') {
+                        this.showModal = false;
+                        this.volunteerName = '';
+                        this.volunteerEmail = '';
+                        this.renderModalContainer();
+                        this.renderRosterTable();
+                    }
+
+                    if (target.dataset.action === 'add-signup') {
+                        const nameInput = document.getElementById('volName');
+                        const emailInput = document.getElementById('volEmail');
+                        this.volunteerName = nameInput ? nameInput.value : '';
+                        this.volunteerEmail = emailInput ? emailInput.value : '';
+                        this.addSignup();
+                    }
+                });
+
+
+                // Dropdown Period Selector (uses 'change' event)
+                appEl.addEventListener('change', (event) => {
+                    if (event.target.id === 'period-selector') {
+                        this.selectedPeriod = event.target.value;
+                        this.renderRosterTable(); // Only re-render the table for speed
+                    }
+                });
+            },
+            
+            // --- DATA LOGIC ---
+            getWeekDates() {
+                const periodData = this.periods.find(p => p.id === this.selectedPeriod);
+                if (!periodData) return [];
+
+                const weeks = [];
+                let currentDate = new Date(periodData.start);
+                const nextQuarterStart = new Date(this.periods[this.periods.indexOf(periodData) + 1]?.start || '2026-01-01');
+
+                for (let i = 0; i < 14; i++) {
+                    const weekDate = new Date(currentDate);
+                    weekDate.setDate(currentDate.getDate() + (i * 7));
+                    
+                    let shiftDate = new Date(weekDate);
+                    
+                    if (this.currentView === 'thursday-hall') {
+                        // Find the Thursday of that week
+                        if (shiftDate.getDay() !== 4) shiftDate.setDate(shiftDate.getDate() + (4 - shiftDate.getDay() + 7) % 7);
+                    } else if (this.currentView === 'saturday-hall') {
+                        // Find the Saturday of that week
+                        if (shiftDate.getDay() !== 6) shiftDate.setDate(shiftDate.getDate() + (6 - shiftDate.getDay() + 7) % 7);
+                    } 
+
+                    if (shiftDate.getTime() >= nextQuarterStart.getTime()) break;
+
+                    // Calculate dates for the week label (used for 'weekly-tasks' view)
+                    const thursdayDate = new Date(weekDate);
+                    thursdayDate.setDate(thursdayDate.getDate() + (4 - thursdayDate.getDay() + 7) % 7);
+                    const saturdayDate = new Date(thursdayDate);
+                    saturdayDate.setDate(thursdayDate.getDate() + 2);
+
+                    weeks.push({
+                        date: shiftDate.toISOString().split('T')[0],
+                        label: shiftDate.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'long' }),
+                        weekLabel: `${thursdayDate.getDate()} ${thursdayDate.toLocaleDateString('en-NZ', { month: 'short' })} - ${saturdayDate.getDate()} ${saturdayDate.toLocaleDateString('en-NZ', { month: 'short' })}`
+                    });
+                }
+                
+                return weeks;
+            },
+
+            async loadSignups() {
+                if (useLocalStorage) {
+                    const saved = localStorage.getItem('uts-roster');
+                    if (saved) this.signups = JSON.parse(saved);
+                } else {
+                    try {
+                        const { data, error } = await supabase.from('volunteer_signups').select('*');
+                        if (error) throw error;
+                        
+                        this.signups = {};
+                        data.forEach(s => {
+                            if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
+                            if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
+                            if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
+                            this.signups[s.roster_type][s.shift_date][s.role_id].push({
+                                id: s.id,
+                                name: s.volunteer_name,
+                                email: s.volunteer_email
+                            });
+                        });
+                    } catch (e) {
+                        console.error('Error loading signups. Check RLS policy:', e.message);
+                        useLocalStorage = true;
+                        const saved = localStorage.getItem('uts-roster');
+                        if (saved) this.signups = JSON.parse(saved);
+                    }
+                }
+            },
+
+            async addSignup() {
+                if (!this.volunteerName.trim()) return;
+                const { view, dateStr, roleId } = this.selectedSlot;
+                
+                // Sanitization function (simple version)
+                const sanitize = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
+
+                const safeName = sanitize(this.volunteerName);
+                const safeEmail = sanitize(this.volunteerEmail);
+                
+                if (useLocalStorage) {
+                    if (!this.signups[view]) this.signups[view] = {};
+                    if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
+                    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+                    this.signups[view][dateStr][roleId].push({ name: safeName, email: safeEmail });
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                } else {
+                    try {
+                        const { error } = await supabase.from('volunteer_signups').insert([{
+                            roster_type: view, shift_date: dateStr, role_id: roleId,
+                            volunteer_name: safeName, volunteer_email: safeEmail
+                        }]);
+                        if (error) throw error;
+                    } catch (e) {
+                        alert('Error signing up: ' + e.message);
+                        return;
+                    }
+                }
+                
+                this.showModal = false;
+                this.volunteerName = '';
+                this.volunteerEmail = '';
+                this.loadSignups();
+            },
+
+            async removeSignup(view, dateStr, roleId, signup) {
+                if (!confirm(`Remove ${signup.name} from this shift?`)) return;
+                
+                if (useLocalStorage) {
+                    this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s.name !== signup.name || s.email !== signup.email);
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                } else {
+                    try {
+                        const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
+                        if (error) throw error;
+                    } catch (e) {
+                        alert('Error removing signup: ' + e.message);
+                    }
+                }
+                this.loadSignups();
+            },
+
+            getSignups(view, dateStr, roleId) {
+                return this.signups[view]?.[dateStr]?.[roleId] || [];
+            },
+
+            // --- VIEW RENDERING ---
+
+            render() {
+                const appEl = document.getElementById('app');
+                
+                if (this.currentView === 'welcome') {
+                    appEl.innerHTML = this.renderWelcome();
+                } else {
+                    appEl.innerHTML = this.renderRosterWrapper();
+                }
+                
+                this.renderModalContainer();
+            },
+            
+            renderModalContainer() {
+                let modalEl = document.getElementById('modal-container');
+                if (!modalEl) {
+                    modalEl = document.createElement('div');
+                    modalEl.id = 'modal-container';
+                    document.body.appendChild(modalEl);
+                }
+                modalEl.innerHTML = this.showModal ? this.renderModal() : '';
+            },
+
+            renderWelcome() {
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-8 mb-6">
+                                <div class="flex items-center gap-3 mb-6">
+                                    <svg class="w-12 h-12 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                    <div>
+                                        <h1 class="

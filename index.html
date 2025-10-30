@@ -20,6 +20,7 @@
 
         if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY_HERE') {
             try {
+                // Initialize Supabase client
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 useLocalStorage = false;
             } catch (e) {
@@ -29,7 +30,6 @@
 
         const app = {
             currentView: 'welcome',
-            // Default selected period set to the start of the defined periods
             selectedPeriod: 'jul-sep-2025', 
             showModal: false,
             selectedSlot: null,
@@ -69,7 +69,6 @@
             // --- CORE APP METHODS ---
 
             async init() {
-                // Ensure a default period is selected
                 if (!this.periods.find(p => p.id === this.selectedPeriod)) {
                      this.selectedPeriod = this.periods[0].id;
                 }
@@ -90,16 +89,18 @@
                 const appEl = document.getElementById('app');
                 if (!appEl) return;
                 
-                // Use event delegation for all dynamic buttons/elements within the app container
+                // Event delegation for general clicks in the app
                 appEl.addEventListener('click', (event) => {
                     const target = event.target.closest('button, select, [data-action]');
                     if (!target) return;
                     
+                    // View/Navigation buttons
                     if (target.dataset.view) {
                         this.currentView = target.dataset.view;
                         this.render();
                     }
 
+                    // Open Modal
                     if (target.dataset.action === 'open-modal') {
                         this.selectedSlot = {
                             view: target.dataset.view,
@@ -112,6 +113,7 @@
                         this.renderModalContainer();
                     }
                     
+                    // Remove Signup
                     if (target.dataset.action === 'remove-signup') {
                         const { view, date, role, id, name } = target.dataset;
                         const signup = this.getSignups(view, date, role).find(s => s.id === id || (useLocalStorage && s.name === name));
@@ -121,7 +123,7 @@
                     }
                 });
                 
-                // Listener for the Modal container (attached to document.body)
+                // Event delegation for the Modal container (attached to document.body)
                 document.body.addEventListener('click', (event) => {
                     const target = event.target.closest('[data-action]');
                     const modalContainer = document.getElementById('modal-container');
@@ -139,6 +141,7 @@
 
                     if (!target) return;
                     
+                    // Cancel Signup button
                     if (target.dataset.action === 'cancel-signup') {
                         this.showModal = false;
                         this.volunteerName = '';
@@ -147,6 +150,7 @@
                         this.renderRosterTable();
                     }
 
+                    // Confirm Add Signup button
                     if (target.dataset.action === 'add-signup') {
                         const nameInput = document.getElementById('volName');
                         const emailInput = document.getElementById('volEmail');
@@ -171,12 +175,11 @@
                 if (!periodData) return [];
 
                 const weeks = [];
-                // FIX: Use YYYY-MM-DDT00:00:00 to force parsing as UTC/local midnight and prevent timezone shift errors
+                // Force parsing as local midnight to prevent timezone shift errors
                 let currentDate = new Date(periodData.start + 'T00:00:00');
                 
                 const nextPeriodIndex = this.periods.findIndex(p => p.id === this.selectedPeriod) + 1;
                 const nextQuarterStart = new Date((this.periods[nextPeriodIndex]?.start || '2026-01-01') + 'T00:00:00');
-
 
                 // Helper function to find a specific day of the week (0=Sun, 4=Thu, 6=Sat)
                 const getTargetDate = (startDate, targetDay) => {
@@ -194,15 +197,13 @@
                     let shiftDate = new Date(weekStartDate);
                     
                     if (this.currentView === 'thursday-hall') {
-                        shiftDate = getTargetDate(weekStartDate, 4); // Thursday
+                        shiftDate = getTargetDate(weekStartDate, 4); // Thursday (4)
                     } else if (this.currentView === 'saturday-hall') {
-                        shiftDate = getTargetDate(weekStartDate, 6); // Saturday
+                        shiftDate = getTargetDate(weekStartDate, 6); // Saturday (6)
                     } 
-                    // For weekly-tasks, we use the weekStartDate itself for simplicity
-
+                    
                     if (shiftDate.getTime() >= nextQuarterStart.getTime()) break;
 
-                    // Calculate week label dates (for use in weekly-tasks)
                     const thursdayDate = getTargetDate(weekStartDate, 4);
                     const saturdayDate = getTargetDate(thursdayDate, 6); 
 
@@ -217,7 +218,6 @@
             },
 
             async loadSignups() {
-                // ... (Load signups logic remains the same)
                 if (useLocalStorage) {
                     const saved = localStorage.getItem('uts-roster');
                     if (saved) this.signups = JSON.parse(saved);
@@ -246,192 +246,4 @@
                 }
             },
 
-            async addSignup() {
-                if (!this.volunteerName.trim()) return;
-                const { view, dateStr, roleId } = this.selectedSlot;
-                
-                const sanitize = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
-
-                const safeName = sanitize(this.volunteerName);
-                const safeEmail = sanitize(this.volunteerEmail);
-                
-                if (useLocalStorage) {
-                    if (!this.signups[view]) this.signups[view] = {};
-                    if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
-                    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-                    this.signups[view][dateStr][roleId].push({ name: safeName, email: safeEmail });
-                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                } else {
-                    try {
-                        const { error } = await supabase.from('volunteer_signups').insert([{
-                            roster_type: view, shift_date: dateStr, role_id: roleId,
-                            volunteer_name: safeName, volunteer_email: safeEmail
-                        }]);
-                        if (error) throw error;
-                    } catch (e) {
-                        alert('Error signing up: ' + e.message);
-                        return;
-                    }
-                }
-                
-                this.showModal = false;
-                this.volunteerName = '';
-                this.volunteerEmail = '';
-                this.renderModalContainer(); // Close modal immediately
-                this.loadSignups(); // Reloads data which triggers re-render of the table
-            },
-
-            async removeSignup(view, dateStr, roleId, signup) {
-                if (!confirm(`Remove ${signup.name} from this shift?`)) return;
-                
-                if (useLocalStorage) {
-                    this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s.name !== signup.name || s.email !== signup.email);
-                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                } else {
-                    try {
-                        // NOTE: This will fail if RLS does not permit DELETE for anonymous users!
-                        const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
-                        if (error) throw error;
-                    } catch (e) {
-                        alert('Error removing signup. Check RLS policy: ' + e.message);
-                    }
-                }
-                this.loadSignups();
-            },
-
-            getSignups(view, dateStr, roleId) {
-                return this.signups[view]?.[dateStr]?.[roleId] || [];
-            },
-
-            // --- VIEW RENDERING ---
-
-            render() {
-                const appEl = document.getElementById('app');
-                if (!appEl) return;
-                
-                if (this.currentView === 'welcome') {
-                    appEl.innerHTML = this.renderWelcome();
-                } else {
-                    appEl.innerHTML = this.renderRosterWrapper();
-                }
-                
-                this.renderModalContainer();
-            },
-            
-            renderModalContainer() {
-                let modalEl = document.getElementById('modal-container');
-                if (!modalEl) {
-                    modalEl = document.createElement('div');
-                    modalEl.id = 'modal-container';
-                    document.body.appendChild(modalEl);
-                }
-                modalEl.innerHTML = this.showModal ? this.renderModal() : '';
-            },
-
-            renderWelcome() {
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-4xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-xl p-8 mb-6">
-                                <div class="flex items-center gap-3 mb-6">
-                                    <svg class="w-12 h-12 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                                    <div>
-                                        <h1 class="text-4xl font-bold text-gray-800">Under the Stars</h1>
-                                        <p class="text-xl text-gray-600">Meal Rosters</p>
-                                    </div>
-                                </div>
-
-                                <div class="prose max-w-none mb-8 text-gray-700">
-                                    <p class="text-lg mb-4">Welcome! 😊</p>
-                                    <p class="mb-4">Thanks for choosing to be a volunteer for Under the Stars! We ask that all volunteers give their time just once a month. We know some people like to help more often, and that's OK! Don't burn yourself out - we want you around for the long haul! 🙂</p>
-                                    
-                                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
-                                        <h3 class="font-bold text-blue-900 mb-2">To sign up:</h3>
-                                        <ol class="list-decimal list-inside space-y-2 text-blue-800">
-                                            <li>Choose the month, day (Thursday/Saturday) and task you would like to do.</li>
-                                            <li>Find the date you're available and click **+ Sign Up**.</li>
-                                        </ol>
-                                    </div>
-
-                                    <p class="mb-4">If you ever have any questions, concerns or suggestions, please let us know.</p>
-                                    <p class="mb-4"><strong>Our Meal Managers</strong> (all available via messenger):<br/>✨ Ani Stace, ✨ Carol Machai, ✨ Keiran Stuart, ✨ Aroha Kelly, ✨ Rose Kent-Wilson, ✨ Adrian De Souza</p>
-                                    <p class="mb-4"><strong>Our venue:</strong> Cliff Rd community hall, 45 Cliff Rd.</p>
-                                    <p class="mb-2">On Thursdays, FREE PARKING is available at the front of the hall in the yellow parking spaces or on Cliff Rd. Anywhere else you may get fined.</p>
-                                    <p class="mb-4">On Saturdays all areas are free parking.</p>
-                                    <p class="text-sm text-gray-600">*Long hair must be tied back.<br/>*Closed toe shoes must be worn when volunteering at the hall</p>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <button data-view="thursday-hall" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg">
-                                        Thursday Hall Help →
-                                    </button>
-                                    <button data-view="saturday-hall" class="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:from-orange-600 hover:to-orange-700 transition shadow-lg">
-                                        Saturday Hall Help →
-                                    </button>
-                                    <button data-view="weekly-tasks" class="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-pink-600 hover:to-pink-700 transition shadow-lg">
-                                        Additional Weekly Tasks →
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-            
-            renderRosterWrapper() {
-                const title = this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
-                             this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 
-                             'Additional Weekly Tasks';
-                
-                const periodSelector = `
-                    <select id="period-selector" class="mt-2 block w-full md:w-64 py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        ${this.periods.map(p => `
-                            <option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>
-                                ${p.label}
-                            </option>
-                        `).join('')}
-                    </select>
-                `;
-
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-7xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                                <button data-view="welcome" class="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                    Back to Overview
-                                </button>
-                                <h1 class="text-3xl font-bold text-gray-800 mb-2">${title}</h1>
-                                ${periodSelector}
-                            </div>
-                            <div id="roster-table-container">
-                                ${this.renderRosterTable()}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-            
-            renderRosterTable() {
-                const dates = this.getWeekDates();
-                const roles = this.roles[this.currentView] || [];
-                
-                let infoBox = '';
-                if (this.currentView === 'thursday-hall') {
-                    infoBox = '<h3 class="font-bold text-blue-900 mb-2">Thursday Hall Help - 10am to 1:30pm</h3><p class="text-sm text-blue-800">Help is needed at the hall from 10am to 1:30pm. Volunteer shifts are 2-3 hours each, excluding managers.</p>';
-                } else if (this.currentView === 'saturday-hall') {
-                    infoBox = '<h3 class="font-bold text-orange-900 mb-2">Saturday Hall Help - 2:45pm to 6:30pm</h3><p class="text-sm text-orange-800">Help is needed at the hall from 2:45pm to 6:30pm. Volunteer shifts are 2-3 hours each, excluding managers.</p>';
-                } else {
-                    infoBox = '<h3 class="font-bold text-pink-900 mb-2">Additional Weekly Tasks</h3><ul class="text-sm text-pink-800 space-y-1 list-disc list-inside"><li>Wednesday: Use UTS van to pick up foods (ideally 2 volunteers)</li><li>Thursday/Saturday: Bakers Delight pick up end of day breads</li><li>Friday: Cheesecake Shop (3-6pm)</li></ul>';
-                }
-
-                if (dates.length === 0) {
-                    return `
-                        <div class="bg-white rounded-lg shadow-lg p-6 mt-4">
-                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-4">${infoBox}</div>
-                            <p class="text-red-600 font-semibold">No dates found for the selected period. Please check the period start dates in the code.</p>
-                        </div>
-                    `;
-                }
-
-                const table
+            async addSignup

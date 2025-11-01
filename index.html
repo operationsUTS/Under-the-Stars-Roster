@@ -85,7 +85,7 @@ renderWelcome() {
                                     <button onclick="app.generateReport()" class="w-full bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700">
                                         📊 View Reports & Export Data
                                     </button>
-                                    <button onclick="if(prompt('Enter admin password:') === '${ADMIN_PASSWORD}') { app.isAdmin = true; app.currentView = 'admin'; app.render(); } else { alert('Incorrect password'); }" class="w-full bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-gray-700">
+                                    <button onclick="if(prompt('Enter admin password:') === 'UTS2025Admin') { app.isAdmin = true; app.currentView = 'admin'; app.render(); } else if (event) { alert('Incorrect password'); }" class="w-full bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-gray-700">
                                         🔒 Admin Panel
                                     </button>
                                 </div>
@@ -159,8 +159,8 @@ renderWelcome() {
                                     
                                     <div class="bg-gray-50 p-4 rounded">
                                         <h3 class="font-bold mb-2">Admin Password</h3>
-                                        <p class="text-sm text-gray-600 mb-2">Current password: <code class="bg-gray-200 px-2 py-1 rounded">${ADMIN_PASSWORD}</code></p>
-                                        <p class="text-xs text-gray-500">To change: Edit the ADMIN_PASSWORD constant in the code</p>
+                                        <p class="text-sm text-gray-600 mb-2">Current password: <code class="bg-gray-200 px-2 py-1 rounded">UTS2025Admin</code></p>
+                                        <p class="text-xs text-gray-500">To change: Edit the password in the admin button code</p>
                                     </div>
                                 </div>
                             </div>
@@ -554,10 +554,11 @@ renderWelcome() {
             },
 
             checkDuplicateSignup(view, dateStr, name) {
+                if (!this.signups[view] || !this.signups[view][dateStr]) return null;
                 const allRoles = this.roles[view] || [];
                 for (let role of allRoles) {
                     const signups = this.getSignups(view, dateStr, role.id);
-                    if (signups.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+                    if (signups.some(s => s.name.toLowerCase().trim() === name.toLowerCase().trim())) {
                         return role.name;
                     }
                 }

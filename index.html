@@ -1,316 +1,19 @@
-renderWelcome() {
-                // Check for urgent unfilled shifts
-                const urgentUnfilled = [];
-                const oneWeekFromNow = new Date();
-                oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-                
-                for (let rosterType in this.roles) {
-                    for (let role of this.roles[rosterType]) {
-                        for (let dateStr in this.signups[rosterType] || {}) {
-                            const date = new Date(dateStr);
-                            if (date <= oneWeekFromNow && date >= new Date()) {
-                                const signups = this.getSignups(rosterType, dateStr, role.id);
-                                if (signups.length < role.capacity) {
-                                    urgentUnfilled.push({
-                                        date: dateStr,
-                                        roster: rosterType,
-                                        role: role.name,
-                                        needed: role.capacity - signups.length
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                return `
-                    <div class="min-h-screen p-4 no-print">
-                        <div class="max-w-4xl mx-auto">
-                            ${urgentUnfilled.length > 0 ? `
-                                <div class="bg-orange-100 border-l-4 border-orange-500 p-4 mb-6 rounded shadow-lg">
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <svg class="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                        </svg>
-                                        <h3 class="font-bold text-orange-900 text-lg">⚠️ Urgent: ${urgentUnfilled.length} Unfilled Shifts This Week!</h3>
-                                    </div>
-                                    <p class="text-sm text-orange-800">Please help fill these upcoming shifts.</p>
-                                </div>
-                            ` : ''}
-                            
-                            ${this.connectionStatus === 'error' ? `
-                                <div class="bg-red-100 border-l-4 border-red-500 p-4 mb-6 rounded">
-                                    <p class="font-bold text-red-900">⚠️ Offline Mode</p>
-                                    <p class="text-sm text-red-800">You're offline. Changes will sync when reconnected.</p>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="bg-white rounded-lg shadow-xl p-8">
-                                <div class="flex items-center gap-3 mb-6">
-                                    <svg class="w-12 h-12 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                                    <div>
-                                        <h1 class="text-4xl font-bold">Under the Stars</h1>
-                                        <p class="text-xl text-gray-600">Meal Rosters</p>
-                                    </div>
-                                </div>
-
-                                <div class="mb-8 text-gray-700 space-y-4">
-                                    <p class="text-lg">Welcome! 😊</p>
-                                    <p>Thanks for volunteering! We ask volunteers give their time once a month. Don't burn yourself out - we want you around for the long haul! 🙂</p>
-                                    
-                                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                                        <h3 class="font-bold text-blue-900 mb-2">To sign up:</h3>
-                                        <ol class="list-decimal list-inside space-y-1 text-blue-800">
-                                            <li>Choose your preferred day and task</li>
-                                            <li>Find an available date and enter your name</li>
-                                            <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations2@underthestars.org.nz" class="underline">operations2@underthestars.org.nz</a> as soon as possible</strong></li>
-                                        </ol>
-                                    </div>
-
-                                    <p><strong>Meal Managers:</strong> Ani Stace, Carol Machai, Keiran Stuart, Carl Fenton, Rose Kent-Wilson, Adrian De Souza</p>
-                                    <p><strong>Venue:</strong> Cliff Rd community hall, 45 Cliff Rd</p>
-                                    <p class="text-sm">*Long hair tied back. Closed toe shoes required.</p>
-                                </div>
-
-                                <div class="space-y-3 mb-6">
-                                    <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition">Thursday Hall Help →</button>
-                                    <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition">Saturday Hall Help →</button>
-                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition">Weekly Tasks →</button>
-                                </div>
-                                
-                                <div class="border-t pt-6 space-y-3">
-                                    <button onclick="app.showMyShifts()" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700">
-                                        👤 View My Shifts
-                                    </button>
-                                    <button onclick="app.generateReport()" class="w-full bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700">
-                                        📊 View Reports & Export Data
-                                    </button>
-                                    <button onclick="if(prompt('Enter admin password:') === 'UTS2025Admin') { app.isAdmin = true; app.currentView = 'admin'; app.render(); } else if (event) { alert('Incorrect password'); }" class="w-full bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-gray-700">
-                                        🔒 Admin Panel
-                                    </button>
-                                </div>
-                                
-                                <div class="mt-6 text-center text-sm text-gray-500">
-                                    <p>💡 Tip: Add this page to your home screen for easy access!</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-            
-            renderAdmin() {
-                if (!this.isAdmin) {
-                    this.currentView = 'welcome';
-                    this.render();
-                    return '';
-                }
-                
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-4xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-xl p-8">
-                                <button onclick="app.isAdmin=false; app.currentView='welcome'; app.render();" class="text-gray-600 hover:text-gray-800 mb-4">← Back to Home</button>
-                                
-                                <h1 class="text-3xl font-bold mb-6">🔒 Admin Panel</h1>
-                                
-                                <div class="space-y-4">
-                                    <div class="bg-blue-50 p-4 rounded">
-                                        <h3 class="font-bold mb-3">Backup & Restore</h3>
-                                        <div class="flex gap-3">
-                                            <button onclick="app.exportData()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">
-                                                📥 Export Backup (JSON)
-                                            </button>
-                                            <label class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 text-center cursor-pointer">
-                                                📤 Import Backup
-                                                <input type="file" accept=".json" onchange="app.importData(event)" class="hidden">
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="bg-green-50 p-4 rounded">
-                                        <h3 class="font-bold mb-3">Reports & Analytics</h3>
-                                        <div class="flex gap-3">
-                                            <button onclick="app.generateReport()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">
-                                                📊 View Full Report
-                                            </button>
-                                            <button onclick="app.exportToCSV()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">
-                                                📄 Export CSV
-                                            </button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="bg-purple-50 p-4 rounded">
-                                        <h3 class="font-bold mb-3">System Status</h3>
-                                        <div class="space-y-2 text-sm">
-                                            <p><strong>Connection:</strong> <span class="text-${this.connectionStatus === 'connected' ? 'green' : 'red'}-600">${this.connectionStatus === 'connected' ? '● Online' : '● Offline'}</span></p>
-                                            <p><strong>Last Backup:</strong> ${this.getBackups().length > 0 ? new Date(this.getBackups()[this.getBackups().length - 1].timestamp).toLocaleString() : 'None'}</p>
-                                            <p><strong>Total Backups:</strong> ${this.getBackups().length}/5</p>
-                                            <p><strong>Auto-refresh:</strong> Every 30 seconds</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="bg-orange-50 p-4 rounded">
-                                        <h3 class="font-bold mb-3 text-orange-900">⚠️ Danger Zone</h3>
-                                        <button onclick="if(confirm('Clear ALL data? This cannot be undone!')) { app.signups = {}; localStorage.setItem('uts-roster', JSON.stringify({})); app.showNotification('All data cleared'); app.render(); }" class="w-full bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700">
-                                            🗑️ Clear All Data
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="bg-gray-50 p-4 rounded">
-                                        <h3 class="font-bold mb-2">Admin Password</h3>
-                                        <p class="text-sm text-gray-600 mb-2">Current password: <code class="bg-gray-200 px-2 py-1 rounded">UTS2025Admin</code></p>
-                                        <p class="text-xs text-gray-500">To change: Edit the password in the admin button code</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-
-            renderRoster() {
-                const dates = this.getDatesForPeriod();
-                const roles = this.roles[this.currentView] || [];
-                const title = this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
-                             this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 
-                             'Weekly Tasks';
-                
-                const statusColor = this.connectionStatus === 'connected' ? 'green' : 
-                                   this.connectionStatus === 'error' ? 'red' : 'yellow';
-                const statusText = this.connectionStatus === 'connected' ? '● Online' : 
-                                  this.connectionStatus === 'error' ? '● Offline' : '● Connecting...';
-
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-7xl mx-auto print-full-width">
-                            <div class="bg-white rounded-lg shadow-lg p-6 mb-4 no-print">
-                                <button onclick="app.currentView='welcome'; app.render();" class="text-gray-600 hover:text-gray-800 mb-4">← Back</button>
-                                
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h1 class="text-3xl font-bold mb-2">${title}</h1>
-                                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
-                                            <p class="text-sm text-blue-900">
-                                                <strong>Questions?</strong> Contact: <a href="mailto:operations2@underthestars.org.nz" class="underline">operations2@underthestars.org.nz</a>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-${statusColor}-600 text-sm font-semibold mb-2">${statusText}</div>
-                                        <select onchange="app.selectedPeriod=this.value; app.render();" class="px-4 py-2 border rounded-lg mb-2">
-                                            ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
-                                        </select>
-                                        <button onclick="app.printRoster()" class="block w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700">
-                                            🖨️ Print Roster
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="bg-white rounded-lg shadow-lg overflow-auto">
-                                <table class="w-full">
-                                    <thead>
-                                        <tr class="bg-gray-800 text-white">
-                                            <th class="p-3 text-left sticky left-0 bg-gray-800 z-10">Date</th>
-                                            ${roles.map(role => `
-                                                <th class="p-3 text-center min-w-[150px]">
-                                                    <div class="font-bold">${role.name}</div>
-                                                    <div class="text-xs font-normal">${role.time}</div>
-                                                    <div class="text-xs font-normal">(${role.capacity} needed)</div>
-                                                </th>
-                                            `).join('')}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${dates.map((d, idx) => `
-                                            <tr class="${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                                <td class="p-3 font-semibold sticky left-0 bg-inherit border-r">${d.label}</td>
-                                                ${roles.map(role => {
-                                                    const signups = this.getSignups(this.currentView, d.date, role.id);
-                                                    const isFull = signups.length >= role.capacity;
-                                                    const fillPercent = Math.round((signups.length / role.capacity) * 100);
-                                                    return `
-                                                        <td class="p-2 border">
-                                                            <div class="mb-2">
-                                                                <div class="flex justify-between text-xs mb-1">
-                                                                    <span>${signups.length}/${role.capacity}</span>
-                                                                    <span>${fillPercent}%</span>
-                                                                </div>
-                                                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                                                    <div class="h-2 rounded-full transition-all ${
-                                                                        fillPercent === 100 ? 'bg-green-500' : 
-                                                                        fillPercent >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                                                                    }" style="width: ${Math.min(fillPercent, 100)}%"></div>
-                                                                </div>
-                                                            </div>
-                                                            ${signups.map(s => `
-                                                                <div class="bg-green-100 rounded px-2 py-1 text-sm mb-1 flex justify-between no-print-remove">
-                                                                    <span>${s.name}</span>
-                                                                    <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s).replace(/'/g, "\\'")})'  class="text-red-600 hover:text-red-800 no-print">✕</button>
-                                                                </div>
-                                                            `).join('')}
-                                                            <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full ${isFull ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-indigo-50 border-indigo-300 text-indigo-600'} border-2 border-dashed rounded px-2 py-1 text-sm hover:${isFull ? 'bg-yellow-100' : 'bg-indigo-100'} no-print">
-                                                                ${isFull ? '+ Add Extra' : '+ Sign Up'}
-                                                            </button>
-                                                        </td>
-                                                    `;
-                                                }).join('')}
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        ${this.showModal ? `
-                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 no-print">
-                                <div class="bg-white rounded-lg p-6 max-w-md w-full">
-                                    <h3 class="text-xl font-bold mb-4">Sign Up for Shift</h3>
-                                    <div class="mb-4 p-3 bg-gray-50 rounded text-sm">
-                                        <div><strong>Date:</strong> ${this.selectedSlot.dateLabel}</div>
-                                        <div><strong>Role:</strong> ${this.selectedSlot.roleName}</div>
-                                    </div>
-                                    <input type="text" id="volName" placeholder="Enter your name" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerName}">
-                                    <div class="flex gap-3">
-                                        <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">Cancel</button>
-                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.addSignup();" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700">Sign Up</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }
-        };
-
-        window.addEventListener('DOMContentLoaded', () => app.init());
-    </script>
-</body>
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Under the Stars Volunteer Roster</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; }
-            .print-full-width { max-width: 100% !important; }
-        }
-    </style>
 </head>
 <body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
     <div id="app"></div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2aGpuY29iaXZ0c3hlZXF2bHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MDAyMTUsImV4cCI6MjA3NzM3NjIxNX0.NZKMBV8WKbef8ADsWAYlgtWlTJsiLqo9T8tjruuy7_k';
-        const ADMIN_PASSWORD = 'UTS2025Admin'; // Change this password!
-        
+
         let supabase = null;
         let useLocalStorage = false;
 
@@ -331,9 +34,8 @@ renderWelcome() {
             connectionStatus: 'checking',
             lastSaveTime: null,
             backupCount: 5,
-            isAdmin: false,
-            autoRefreshInterval: null,
 
+            // ⭐ TO ADD NEW QUARTERS: Just copy a line below and change the year/months
             periods: [
                 { id: 'dec-2025', label: 'December 2025', months: [12], year: 2025 },
                 { id: 'jan-mar-2026', label: 'January - March 2026', months: [1,2,3], year: 2026 },
@@ -364,19 +66,24 @@ renderWelcome() {
                     { id: 'cheesecake', name: 'Cheesecake Shop', time: '3-6pm', capacity: 1 },
                 ]
             },
-            
+
             validateData(data) {
                 if (!data || typeof data !== 'object') return false;
+
                 for (let rosterType in data) {
                     if (!['thursday-hall', 'saturday-hall', 'weekly-tasks'].includes(rosterType)) continue;
+
                     const dates = data[rosterType];
                     if (typeof dates !== 'object') return false;
+
                     for (let date in dates) {
                         const roles = dates[date];
                         if (typeof roles !== 'object') return false;
+
                         for (let roleId in roles) {
                             const signups = roles[roleId];
                             if (!Array.isArray(signups)) return false;
+
                             for (let signup of signups) {
                                 if (!signup.name || typeof signup.name !== 'string') return false;
                             }
@@ -385,21 +92,30 @@ renderWelcome() {
                 }
                 return true;
             },
-            
+
             createBackup() {
                 try {
                     const timestamp = new Date().toISOString();
-                    const backup = { data: this.signups, timestamp: timestamp, version: '1.0' };
+                    const backup = {
+                        data: this.signups,
+                        timestamp: timestamp,
+                        version: '1.0'
+                    };
+
                     const backups = this.getBackups();
                     backups.push(backup);
-                    if (backups.length > this.backupCount) backups.shift();
+
+                    if (backups.length > this.backupCount) {
+                        backups.shift();
+                    }
+
                     localStorage.setItem('uts-roster-backups', JSON.stringify(backups));
                     console.log('Backup created:', timestamp);
                 } catch (e) {
                     console.error('Backup creation failed:', e);
                 }
             },
-            
+
             getBackups() {
                 try {
                     const stored = localStorage.getItem('uts-roster-backups');
@@ -407,20 +123,24 @@ renderWelcome() {
                     const backups = JSON.parse(stored);
                     return Array.isArray(backups) ? backups : [];
                 } catch (e) {
+                    console.error('Error reading backups:', e);
                     return [];
                 }
             },
-            
+
             restoreFromBackup() {
                 const backups = this.getBackups();
+
                 for (let i = backups.length - 1; i >= 0; i--) {
                     const backup = backups[i];
                     if (backup.data && this.validateData(backup.data)) {
                         this.signups = backup.data;
                         this.showNotification('Restored from backup: ' + new Date(backup.timestamp).toLocaleString(), 'success');
+                        console.log('Restored from backup:', backup.timestamp);
                         return true;
                     }
                 }
+
                 this.showNotification('No valid backups found. Starting fresh.', 'warning');
                 this.signups = {};
                 return false;
@@ -430,25 +150,18 @@ renderWelcome() {
                 await this.checkConnection();
                 await this.loadSignups();
                 this.render();
-                
+
                 if (!useLocalStorage && supabase) {
                     supabase.channel('signups').on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'volunteer_signups' }, 
                         () => this.loadSignups()
                     ).subscribe();
                 }
-                
+
                 setInterval(() => this.autoBackup(), 300000);
                 this.createBackup();
-                
-                // Auto-refresh every 30 seconds
-                this.autoRefreshInterval = setInterval(() => {
-                    if (this.currentView !== 'welcome' && !this.showModal) {
-                        this.loadSignups();
-                    }
-                }, 30000);
             },
-            
+
             async checkConnection() {
                 if (useLocalStorage) {
                     this.connectionStatus = 'offline';
@@ -461,7 +174,7 @@ renderWelcome() {
                     this.connectionStatus = 'error';
                 }
             },
-            
+
             autoBackup() {
                 try {
                     if (!this.validateData(this.signups)) {
@@ -473,7 +186,7 @@ renderWelcome() {
                     console.error('Auto-backup failed:', e);
                 }
             },
-            
+
             showNotification(message, type = 'success') {
                 const notif = document.createElement('div');
                 notif.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
@@ -487,11 +200,14 @@ renderWelcome() {
             getDatesForPeriod() {
                 const period = this.periods.find(p => p.id === this.selectedPeriod);
                 if (!period) return [];
+
                 const dates = [];
                 const targetDay = this.currentView === 'thursday-hall' ? 4 : 
                                  this.currentView === 'saturday-hall' ? 6 : 3;
+
                 period.months.forEach(month => {
                     const date = new Date(period.year, month - 1, 1);
+
                     while (date.getMonth() === month - 1) {
                         if (date.getDay() === targetDay) {
                             dates.push({
@@ -502,6 +218,7 @@ renderWelcome() {
                         date.setDate(date.getDate() + 1);
                     }
                 });
+
                 return dates;
             },
 
@@ -515,9 +232,13 @@ renderWelcome() {
                                 this.signups = parsed;
                                 this.createBackup();
                             } else {
+                                console.error('Loaded data is corrupted. Attempting recovery...');
+                                this.showNotification('Data corruption detected. Recovering...', 'error');
                                 this.restoreFromBackup();
                             }
                         } catch (e) {
+                            console.error('Error parsing data:', e);
+                            this.showNotification('Data corrupted. Recovering from backup...', 'error');
                             this.restoreFromBackup();
                         }
                     }
@@ -527,14 +248,22 @@ renderWelcome() {
                         try {
                             const { data, error } = await supabase.from('volunteer_signups').select('*');
                             if (error) throw error;
+
                             this.signups = {};
                             data.forEach(s => {
                                 if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
                                 if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
                                 if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
-                                this.signups[s.roster_type][s.shift_date][s.role_id].push({ id: s.id, name: s.volunteer_name });
+                                this.signups[s.roster_type][s.shift_date][s.role_id].push({
+                                    id: s.id,
+                                    name: s.volunteer_name
+                                });
                             });
-                            if (!this.validateData(this.signups)) throw new Error('Loaded data failed validation');
+
+                            if (!this.validateData(this.signups)) {
+                                throw new Error('Loaded data failed validation');
+                            }
+
                             this.connectionStatus = 'connected';
                             this.lastSaveTime = new Date();
                             this.createBackup();
@@ -542,7 +271,9 @@ renderWelcome() {
                         } catch (e) {
                             retries--;
                             if (retries === 0) {
+                                console.error('Load failed after retries:', e);
                                 this.connectionStatus = 'error';
+                                this.showNotification('Could not load data. Using local backup.', 'error');
                                 this.restoreFromBackup();
                             } else {
                                 await new Promise(r => setTimeout(r, 1000));
@@ -553,70 +284,57 @@ renderWelcome() {
                 this.render();
             },
 
-            checkDuplicateSignup(view, dateStr, name) {
-                if (!this.signups[view] || !this.signups[view][dateStr]) return null;
-                const allRoles = this.roles[view] || [];
-                for (let role of allRoles) {
-                    const signups = this.getSignups(view, dateStr, role.id);
-                    if (signups.some(s => s.name.toLowerCase().trim() === name.toLowerCase().trim())) {
-                        return role.name;
-                    }
-                }
-                return null;
-            },
-
             async addSignup() {
                 if (!this.volunteerName.trim()) return alert('Please enter your name');
                 const { view, dateStr, roleId } = this.selectedSlot;
-                
-                // Check for duplicate signup
-                const existingRole = this.checkDuplicateSignup(view, dateStr, this.volunteerName.trim());
-                if (existingRole) {
-                    if (!confirm(`${this.volunteerName} is already signed up for ${existingRole} on this date. Add anyway?`)) {
-                        this.showModal = false;
-                        this.volunteerName = '';
-                        this.render();
-                        return;
-                    }
-                }
-                
-                // Check capacity
-                const currentSignups = this.getSignups(view, dateStr, roleId);
-                const role = this.roles[view].find(r => r.id === roleId);
-                if (currentSignups.length >= role.capacity) {
-                    if (!confirm(`Recommended capacity (${role.capacity}) reached. Add extra volunteer anyway?`)) {
-                        this.showModal = false;
-                        this.volunteerName = '';
-                        this.render();
-                        return;
-                    }
-                }
-                
+
                 const originalSignups = JSON.parse(JSON.stringify(this.signups));
-                
+
                 if (useLocalStorage) {
                     try {
                         if (!this.signups[view]) this.signups[view] = {};
                         if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
                         if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
                         this.signups[view][dateStr][roleId].push({ name: this.volunteerName.trim() });
-                        if (!this.validateData(this.signups)) throw new Error('Data validation failed');
+
+                        if (!this.validateData(this.signups)) {
+                            throw new Error('Data validation failed');
+                        }
+
                         localStorage.setItem('uts-roster', JSON.stringify(this.signups));
                         this.createBackup();
                         this.showNotification('Signed up successfully!');
                     } catch (e) {
                         this.signups = originalSignups;
-                        this.showNotification('Error: ' + e.message, 'error');
+                        this.showNotification('Error signing up: ' + e.message, 'error');
                         return;
                     }
                 } else {
                     let retries = 3;
                     while (retries > 0) {
                         try {
-                            await supabase.from('volunteer_signups').insert({
-                                roster_type: view, shift_date: dateStr, role_id: roleId,
+                            const { data, error } = await supabase.from('volunteer_signups').insert({
+                                roster_type: view,
+                                shift_date: dateStr,
+                                role_id: roleId,
                                 volunteer_name: this.volunteerName.trim()
                             }).select();
+
+                            if (error) throw error;
+
+                            const { data: verification, error: verifyError } = await supabase
+                                .from('volunteer_signups')
+                                .select('*')
+                                .eq('roster_type', view)
+                                .eq('shift_date', dateStr)
+                                .eq('role_id', roleId)
+                                .eq('volunteer_name', this.volunteerName.trim())
+                                .limit(1);
+
+                            if (verifyError || !verification || verification.length === 0) {
+                                throw new Error('Write verification failed');
+                            }
+
                             await this.loadSignups();
                             this.showNotification('Signed up successfully!');
                             break;
@@ -630,6 +348,7 @@ renderWelcome() {
                         }
                     }
                 }
+
                 this.showModal = false;
                 this.volunteerName = '';
                 this.render();
@@ -637,24 +356,42 @@ renderWelcome() {
 
             async removeSignup(view, dateStr, roleId, signup) {
                 if (!confirm(`Remove ${signup.name}?`)) return;
+
                 const originalSignups = JSON.parse(JSON.stringify(this.signups));
+
                 if (useLocalStorage) {
                     try {
                         this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
-                        if (!this.validateData(this.signups)) throw new Error('Data validation failed');
+
+                        if (!this.validateData(this.signups)) {
+                            throw new Error('Data validation failed');
+                        }
+
                         localStorage.setItem('uts-roster', JSON.stringify(this.signups));
                         this.createBackup();
                         this.showNotification('Removed successfully');
                     } catch (e) {
                         this.signups = originalSignups;
-                        this.showNotification('Error: ' + e.message, 'error');
+                        this.showNotification('Error removing: ' + e.message, 'error');
                         return;
                     }
                 } else {
                     let retries = 3;
                     while (retries > 0) {
                         try {
-                            await supabase.from('volunteer_signups').delete().eq('id', signup.id);
+                            const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
+                            if (error) throw error;
+
+                            const { data: verification, error: verifyError } = await supabase
+                                .from('volunteer_signups')
+                                .select('*')
+                                .eq('id', signup.id)
+                                .limit(1);
+
+                            if (verifyError || (verification && verification.length > 0)) {
+                                throw new Error('Delete verification failed');
+                            }
+
                             await this.loadSignups();
                             this.showNotification('Removed successfully');
                             break;
@@ -674,229 +411,160 @@ renderWelcome() {
             getSignups(view, dateStr, roleId) {
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
             },
-            
-            getMyShifts(name) {
-                const shifts = [];
-                for (let rosterType in this.signups) {
-                    for (let dateStr in this.signups[rosterType]) {
-                        for (let roleId in this.signups[rosterType][dateStr]) {
-                            const volunteers = this.signups[rosterType][dateStr][roleId];
-                            if (volunteers.some(v => v.name.toLowerCase() === name.toLowerCase())) {
-                                const role = this.roles[rosterType]?.find(r => r.id === roleId);
-                                shifts.push({
-                                    date: dateStr,
-                                    roster: rosterType,
-                                    role: role?.name || roleId,
-                                    time: role?.time || ''
-                                });
-                            }
-                        }
-                    }
-                }
-                return shifts.sort((a, b) => new Date(a.date) - new Date(b.date));
-            },
-
-            exportToCSV() {
-                const csvRows = [['Date', 'Day', 'Roster Type', 'Role', 'Volunteer Name', 'Shift Time', 'Capacity']];
-                for (let rosterType in this.signups) {
-                    const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' : 
-                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Weekly Tasks';
-                    for (let dateStr in this.signups[rosterType]) {
-                        const date = new Date(dateStr);
-                        const dayName = date.toLocaleDateString('en-NZ', { weekday: 'long' });
-                        const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
-                        for (let roleId in this.signups[rosterType][dateStr]) {
-                            const role = this.roles[rosterType]?.find(r => r.id === roleId);
-                            const volunteers = this.signups[rosterType][dateStr][roleId];
-                            volunteers.forEach(volunteer => {
-                                csvRows.push([dateLabel, dayName, rosterName, role?.name || roleId, 
-                                             volunteer.name, role?.time || '', role?.capacity || '']);
-                            });
-                        }
-                    }
-                }
-                const csvContent = csvRows.map(row => 
-                    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-                ).join('\n');
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `volunteer-roster-${new Date().toISOString().split('T')[0]}.csv`;
-                link.click();
-                URL.revokeObjectURL(url);
-                this.showNotification('CSV exported!');
-            },
-            
-            importData(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const imported = JSON.parse(event.target.result);
-                        if (!this.validateData(imported)) throw new Error('Invalid data format');
-                        if (confirm('Replace ALL current data with backup?')) {
-                            this.signups = imported;
-                            if (useLocalStorage) {
-                                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                            } else {
-                                await supabase.from('volunteer_signups').delete().neq('id', 0);
-                                for (let view in imported) {
-                                    for (let date in imported[view]) {
-                                        for (let role in imported[view][date]) {
-                                            for (let signup of imported[view][date][role]) {
-                                                await supabase.from('volunteer_signups').insert({
-                                                    roster_type: view, shift_date: date, role_id: role,
-                                                    volunteer_name: signup.name
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            await this.loadSignups();
-                            this.showNotification('Data restored!');
-                        }
-                    } catch (error) {
-                        this.showNotification('Invalid backup file', 'error');
-                    }
-                };
-                reader.readAsText(file);
-            },
-            
-            exportData() {
-                const dataStr = JSON.stringify(this.signups, null, 2);
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `roster-backup-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                this.showNotification('Backup downloaded!');
-            },
-
-            generateReport() {
-                const report = { totalSignups: 0, byRoster: {}, byVolunteer: {}, unfilled: [] };
-                for (let rosterType in this.signups) {
-                    report.byRoster[rosterType] = 0;
-                    for (let dateStr in this.signups[rosterType]) {
-                        for (let roleId in this.signups[rosterType][dateStr]) {
-                            const volunteers = this.signups[rosterType][dateStr][roleId];
-                            report.totalSignups += volunteers.length;
-                            report.byRoster[rosterType] += volunteers.length;
-                            volunteers.forEach(v => {
-                                if (!report.byVolunteer[v.name]) report.byVolunteer[v.name] = 0;
-                                report.byVolunteer[v.name]++;
-                            });
-                            const role = this.roles[rosterType]?.find(r => r.id === roleId);
-                            if (role && volunteers.length < role.capacity) {
-                                report.unfilled.push({
-                                    date: dateStr, roster: rosterType, role: role.name,
-                                    needed: role.capacity - volunteers.length
-                                });
-                            }
-                        }
-                    }
-                }
-                const sortedVolunteers = Object.entries(report.byVolunteer).sort((a, b) => b[1] - a[1]).slice(0, 10);
-                
-                let reportHtml = `
-                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 no-print">
-                        <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-auto">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-2xl font-bold">Volunteer Report</h3>
-                                <button onclick="document.getElementById('report-modal').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-                            </div>
-                            <div class="space-y-4">
-                                <div class="bg-blue-50 p-4 rounded">
-                                    <h4 class="font-bold mb-2">Total Signups: ${report.totalSignups}</h4>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold mb-2">By Roster Type:</h4>
-                                    <ul class="list-disc list-inside">
-                                        ${Object.entries(report.byRoster).map(([type, count]) => 
-                                            `<li>${type.replace('-', ' ')}: ${count} signups</li>`
-                                        ).join('')}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold mb-2">Top 10 Volunteers:</h4>
-                                    <ol class="list-decimal list-inside">
-                                        ${sortedVolunteers.map(([name, count]) => `<li>${name}: ${count} shifts</li>`).join('')}
-                                    </ol>
-                                </div>
-                                ${report.unfilled.length > 0 ? `
-                                    <div class="bg-orange-50 p-4 rounded">
-                                        <h4 class="font-bold mb-2 text-orange-900">Unfilled Slots (${report.unfilled.length}):</h4>
-                                        <ul class="text-sm space-y-1">
-                                            ${report.unfilled.slice(0, 10).map(item => 
-                                                `<li>${new Date(item.date).toLocaleDateString('en-NZ')} - ${item.role} (${item.needed} needed)</li>`
-                                            ).join('')}
-                                        </ul>
-                                    </div>
-                                ` : '<div class="bg-green-50 p-4 rounded"><p class="text-green-900 font-semibold">All slots filled! 🎉</p></div>'}
-                            </div>
-                            <div class="mt-6 flex gap-3">
-                                <button onclick="app.exportToCSV()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">Export CSV</button>
-                                <button onclick="document.getElementById('report-modal').remove()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                const modal = document.createElement('div');
-                modal.id = 'report-modal';
-                modal.innerHTML = reportHtml;
-                document.body.appendChild(modal);
-            },
-            
-            showMyShifts() {
-                const name = prompt('Enter your name to see your shifts:');
-                if (!name) return;
-                const shifts = this.getMyShifts(name.trim());
-                if (shifts.length === 0) {
-                    alert('No shifts found for ' + name);
-                    return;
-                }
-                let html = `
-                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 no-print">
-                        <div class="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-auto">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold">Shifts for ${name}</h3>
-                                <button onclick="document.getElementById('my-shifts-modal').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-                            </div>
-                            <div class="space-y-2">
-                                ${shifts.map(s => `
-                                    <div class="bg-green-50 border border-green-300 rounded p-3">
-                                        <div class="font-bold">${new Date(s.date).toLocaleDateString('en-NZ', {weekday: 'short', day: 'numeric', month: 'short'})}</div>
-                                        <div class="text-sm">${s.role} - ${s.time}</div>
-                                        <div class="text-xs text-gray-600">${s.roster.replace('-', ' ')}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button onclick="document.getElementById('my-shifts-modal').remove()" class="w-full mt-4 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">Close</button>
-                        </div>
-                    </div>
-                `;
-                const modal = document.createElement('div');
-                modal.id = 'my-shifts-modal';
-                modal.innerHTML = html;
-                document.body.appendChild(modal);
-            },
-            
-            printRoster() {
-                window.print();
-            },
 
             render() {
                 const appEl = document.getElementById('app');
                 if (this.currentView === 'welcome') {
                     appEl.innerHTML = this.renderWelcome();
-                } else if (this.currentView === 'admin') {
-                    appEl.innerHTML = this.renderAdmin();
                 } else {
                     appEl.innerHTML = this.renderRoster();
                 }
             },
 
-            renderWelcome()
+            renderWelcome() {
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-8">
+                                <div class="flex items-center gap-3 mb-6">
+                                    <svg class="w-12 h-12 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                    <div>
+                                        <h1 class="text-4xl font-bold">Under the Stars</h1>
+                                        <p class="text-xl text-gray-600">Meal Rosters</p>
+                                    </div>
+                                </div>
+
+                                <div class="mb-8 text-gray-700 space-y-4">
+                                    <p class="text-lg">Welcome! 😊</p>
+                                    <p>Thanks for volunteering! We ask volunteers give their time once a month. Don't burn yourself out - we want you around for the long haul! 🙂</p>
+                                    
+                                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                                        <h3 class="font-bold text-blue-900 mb-2">To sign up:</h3>
+                                        <ol class="list-decimal list-inside space-y-1 text-blue-800">
+                                            <li>Choose your preferred day and task</li>
+                                            <li>Find an available date and enter your name</li>
+                                            <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations2@underthestars.org.nz" class="underline">operations2@underthestars.org.nz</a> as soon as possible</strong></li>
+                                            <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a> as soon as possible</strong></li>
+                                        </ol>
+                                    </div>
+
+                                    <p><strong>Meal Managers:</strong> Ani Stace, Carol Machai, Keiran Stuart, Carl Fenton, Rose Kent-Wilson, Adrian De Souza</p>
+                                    <p><strong>Venue:</strong> Cliff Rd community hall, 45 Cliff Rd</p>
+                                    <p class="text-sm">*Long hair tied back. Closed toe shoes required.</p>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700">Thursday Hall Help →</button>
+                                    <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700">Saturday Hall Help →</button>
+                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700">Weekly Tasks →</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderRoster() {
+                const dates = this.getDatesForPeriod();
+                const roles = this.roles[this.currentView] || [];
+                const title = this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
+                             this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 
+                             'Weekly Tasks';
+
+                const statusColor = this.connectionStatus === 'connected' ? 'green' : 
+                                   this.connectionStatus === 'error' ? 'red' : 'yellow';
+                const statusText = this.connectionStatus === 'connected' ? '● Online' : 
+                                  this.connectionStatus === 'error' ? '● Offline' : '● Connecting...';
+
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-7xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
+                                <button onclick="app.currentView='welcome'; app.render();" class="text-gray-600 hover:text-gray-800 mb-4">← Back</button>
+                                
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h1 class="text-3xl font-bold mb-2">${title}</h1>
+                                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                                            <p class="text-sm text-blue-900">
+                                                <strong>Questions?</strong> Contact: <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a>
+                                                <strong>Questions?</strong> Contact: <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-${statusColor}-600 text-sm font-semibold mb-2">${statusText}</div>
+                                        <select onchange="app.selectedPeriod=this.value; app.render();" class="px-4 py-2 border rounded-lg">
+                                            ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-lg shadow-lg overflow-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="bg-gray-800 text-white">
+                                            <th class="p-3 text-left sticky left-0 bg-gray-800 z-10">Date</th>
+                                            ${roles.map(role => `
+                                                <th class="p-3 text-center min-w-[150px]">
+                                                    <div class="font-bold">${role.name}</div>
+                                                    <div class="text-xs font-normal">${role.time}</div>
+                                                    <div class="text-xs font-normal">(${role.capacity} needed)</div>
+                                                </th>
+                                            `).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${dates.map((d, idx) => `
+                                            <tr class="${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
+                                                <td class="p-3 font-semibold sticky left-0 bg-inherit border-r">${d.label}</td>
+                                                ${roles.map(role => {
+                                                    const signups = this.getSignups(this.currentView, d.date, role.id);
+                                                    const isFull = signups.length >= role.capacity;
+                                                    return `
+                                                        <td class="p-2 border">
+                                                            ${signups.map(s => `
+                                                                <div class="bg-green-100 rounded px-2 py-1 text-sm mb-1 flex justify-between">
+                                                                    <span>${s.name}</span>
+                                                                    <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s)})' class="text-red-600 hover:text-red-800">✕</button>
+                                                                </div>
+                                                            `).join('')}
+                                                            ${!isFull ? `
+                                                                <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-sm text-indigo-600 hover:bg-indigo-100">+ Sign Up</button>
+                                                            ` : '<div class="text-gray-500 text-center text-sm">Full</div>'}
+                                                        </td>
+                                                    `;
+                                                }).join('')}
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        ${this.showModal ? `
+                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                                    <h3 class="text-xl font-bold mb-4">Sign Up for Shift</h3>
+                                    <div class="mb-4 p-3 bg-gray-50 rounded text-sm">
+                                        <div><strong>Date:</strong> ${this.selectedSlot.dateLabel}</div>
+                                        <div><strong>Role:</strong> ${this.selectedSlot.roleName}</div>
+                                    </div>
+                                    <input type="text" id="volName" placeholder="Enter your name" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerName}">
+                                    <div class="flex gap-3">
+                                        <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">Cancel</button>
+                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.addSignup();" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700">Sign Up</button>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>

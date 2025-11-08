@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Under the Stars Volunteer Roster</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .print-full-width { max-width: 100% !important; }
+        }
+        
+        /* Better table scrolling */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Ensure table cells don't shrink too much on mobile */
+        @media (max-width: 768px) {
+            .role-cell {
+                min-width: 140px;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
     <div id="app"></div>
@@ -34,8 +54,8 @@
             connectionStatus: 'checking',
             lastSaveTime: null,
             backupCount: 5,
+            isInitialized: false,
 
-            // ⭐ TO ADD NEW QUARTERS: Just copy a line below and change the year/months
             periods: [
                 { id: 'dec-2025', label: 'December 2025', months: [12], year: 2025 },
                 { id: 'jan-mar-2026', label: 'January - March 2026', months: [1,2,3], year: 2026 },
@@ -135,20 +155,36 @@
                     const backup = backups[i];
                     if (backup.data && this.validateData(backup.data)) {
                         this.signups = backup.data;
-                        this.showNotification('Restored from backup: ' + new Date(backup.timestamp).toLocaleString(), 'success');
                         console.log('Restored from backup:', backup.timestamp);
                         return true;
                     }
                 }
 
-                this.showNotification('No valid backups found. Starting fresh.', 'warning');
+                console.log('No valid backups found. Starting fresh.');
                 this.signups = {};
                 return false;
+            },
+
+            showNotification(message, type = 'success') {
+                // Only show notifications when not on welcome page
+                if (this.currentView === 'welcome' && !this.isInitialized) {
+                    console.log('Notification suppressed on welcome:', message);
+                    return;
+                }
+                
+                const notif = document.createElement('div');
+                notif.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                    type === 'success' ? 'bg-green-600' : type === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
+                } text-white font-semibold`;
+                notif.textContent = message;
+                document.body.appendChild(notif);
+                setTimeout(() => notif.remove(), 3000);
             },
 
             async init() {
                 await this.checkConnection();
                 await this.loadSignups();
+                this.isInitialized = true;
                 this.render();
 
                 if (!useLocalStorage && supabase) {
@@ -187,16 +223,6 @@
                 }
             },
 
-            showNotification(message, type = 'success') {
-                const notif = document.createElement('div');
-                notif.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
-                    type === 'success' ? 'bg-green-600' : type === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
-                } text-white font-semibold`;
-                notif.textContent = message;
-                document.body.appendChild(notif);
-                setTimeout(() => notif.remove(), 3000);
-            },
-
             getDatesForPeriod() {
                 const period = this.periods.find(p => p.id === this.selectedPeriod);
                 if (!period) return [];
@@ -233,12 +259,10 @@
                                 this.createBackup();
                             } else {
                                 console.error('Loaded data is corrupted. Attempting recovery...');
-                                this.showNotification('Data corruption detected. Recovering...', 'error');
                                 this.restoreFromBackup();
                             }
                         } catch (e) {
                             console.error('Error parsing data:', e);
-                            this.showNotification('Data corrupted. Recovering from backup...', 'error');
                             this.restoreFromBackup();
                         }
                     }
@@ -273,7 +297,6 @@
                             if (retries === 0) {
                                 console.error('Load failed after retries:', e);
                                 this.connectionStatus = 'error';
-                                this.showNotification('Could not load data. Using local backup.', 'error');
                                 this.restoreFromBackup();
                             } else {
                                 await new Promise(r => setTimeout(r, 1000));
@@ -281,7 +304,9 @@
                         }
                     }
                 }
-                this.render();
+                if (this.isInitialized) {
+                    this.render();
+                }
             },
 
             async addSignup() {
@@ -443,7 +468,6 @@
                                         <ol class="list-decimal list-inside space-y-1 text-blue-800">
                                             <li>Choose your preferred day and task</li>
                                             <li>Find an available date and enter your name</li>
-                                            <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations@underthestars.org.nz" class="underline">operations2@underthestars.org.nz</a> as soon as possible</strong></li>
                                             <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a> as soon as possible</strong></li>
                                         </ol>
                                     </div>
@@ -454,9 +478,9 @@
                                 </div>
 
                                 <div class="space-y-3">
-                                    <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700">Thursday Hall Help →</button>
-                                    <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700">Saturday Hall Help →</button>
-                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700">Weekly Tasks →</button>
+                                    <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
+                                    <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
+                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Weekly Tasks →</button>
                                 </div>
                             </div>
                         </div>
@@ -477,38 +501,37 @@
                                   this.connectionStatus === 'error' ? '● Offline' : '● Connecting...';
 
                 return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-7xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
-                                <button onclick="app.currentView='welcome'; app.render();" class="text-gray-600 hover:text-gray-800 mb-4">← Back</button>
+                    <div class="min-h-screen p-2 md:p-4">
+                        <div class="max-w-full mx-auto">
+                            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4">
+                                <button onclick="app.currentView='welcome'; app.render();" class="text-gray-600 hover:text-gray-800 mb-4 font-semibold">← Back</button>
                                 
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h1 class="text-3xl font-bold mb-2">${title}</h1>
+                                <div class="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
+                                    <div class="flex-1">
+                                        <h1 class="text-2xl md:text-3xl font-bold mb-2">${title}</h1>
                                         <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
                                             <p class="text-sm text-blue-900">
-                                                <strong>Questions?</strong> Contact: <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a>
                                                 <strong>Questions?</strong> Contact: <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a>
                                             </p>
                                         </div>
                                     </div>
-                                    <div class="text-right">
+                                    <div class="text-left md:text-right w-full md:w-auto">
                                         <div class="text-${statusColor}-600 text-sm font-semibold mb-2">${statusText}</div>
-                                        <select onchange="app.selectedPeriod=this.value; app.render();" class="px-4 py-2 border rounded-lg">
+                                        <select onchange="app.selectedPeriod=this.value; app.render();" class="w-full md:w-auto px-4 py-2 border rounded-lg">
                                             ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
                                         </select>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="bg-white rounded-lg shadow-lg overflow-auto">
-                                <table class="w-full">
+                            <div class="bg-white rounded-lg shadow-lg table-container">
+                                <table class="w-full border-collapse">
                                     <thead>
                                         <tr class="bg-gray-800 text-white">
-                                            <th class="p-3 text-left sticky left-0 bg-gray-800 z-10">Date</th>
+                                            <th class="p-2 md:p-3 text-left sticky left-0 bg-gray-800 z-20 min-w-[80px]">Date</th>
                                             ${roles.map(role => `
-                                                <th class="p-3 text-center min-w-[150px]">
-                                                    <div class="font-bold">${role.name}</div>
+                                                <th class="p-2 md:p-3 text-center role-cell">
+                                                    <div class="font-bold text-sm md:text-base">${role.name}</div>
                                                     <div class="text-xs font-normal">${role.time}</div>
                                                     <div class="text-xs font-normal">(${role.capacity} needed)</div>
                                                 </th>
@@ -518,21 +541,23 @@
                                     <tbody>
                                         ${dates.map((d, idx) => `
                                             <tr class="${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                                <td class="p-3 font-semibold sticky left-0 bg-inherit border-r">${d.label}</td>
+                                                <td class="p-2 md:p-3 font-semibold sticky left-0 bg-inherit border-r z-10 text-sm md:text-base">${d.label}</td>
                                                 ${roles.map(role => {
                                                     const signups = this.getSignups(this.currentView, d.date, role.id);
                                                     const isFull = signups.length >= role.capacity;
                                                     return `
-                                                        <td class="p-2 border">
-                                                            ${signups.map(s => `
-                                                                <div class="bg-green-100 rounded px-2 py-1 text-sm mb-1 flex justify-between">
-                                                                    <span>${s.name}</span>
-                                                                    <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s)})' class="text-red-600 hover:text-red-800">✕</button>
-                                                                </div>
-                                                            `).join('')}
-                                                            ${!isFull ? `
-                                                                <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-sm text-indigo-600 hover:bg-indigo-100">+ Sign Up</button>
-                                                            ` : '<div class="text-gray-500 text-center text-sm">Full</div>'}
+                                                        <td class="p-2 border role-cell">
+                                                            <div class="space-y-1">
+                                                                ${signups.map(s => `
+                                                                    <div class="bg-green-100 rounded px-2 py-1 text-xs md:text-sm flex justify-between items-center gap-2">
+                                                                        <span class="truncate">${s.name}</span>
+                                                                        <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s).replace(/'/g, "&#39;")})' class="text-red-600 hover:text-red-800 flex-shrink-0">✕</button>
+                                                                    </div>
+                                                                `).join('')}
+                                                                ${!isFull ? `
+                                                                    <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-xs md:text-sm text-indigo-600 hover:bg-indigo-100 transition-colors">+ Sign Up</button>
+                                                                ` : '<div class="text-gray-500 text-center text-xs md:text-sm py-1">Full</div>'}
+                                                            </div>
                                                         </td>
                                                     `;
                                                 }).join('')}
@@ -551,10 +576,10 @@
                                         <div><strong>Date:</strong> ${this.selectedSlot.dateLabel}</div>
                                         <div><strong>Role:</strong> ${this.selectedSlot.roleName}</div>
                                     </div>
-                                    <input type="text" id="volName" placeholder="Enter your name" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerName}">
+                                    <input type="text" id="volName" placeholder="Enter your name" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerName}" onkeypress="if(event.key==='Enter'){app.volunteerName=this.value; app.addSignup();}">
                                     <div class="flex gap-3">
-                                        <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">Cancel</button>
-                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.addSignup();" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700">Sign Up</button>
+                                        <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors">Cancel</button>
+                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.addSignup();" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">Sign Up</button>
                                     </div>
                                 </div>
                             </div>

@@ -779,8 +779,9 @@
                                                 ${roles.map(role => {
                                                     const signups = this.getSignups(this.currentView, d.date, role.id);
                                                     const isFull = signups.length >= role.capacity;
+                                                    const isOverCapacity = signups.length > role.capacity;
                                                     return `
-                                                        <td class="p-2 border role-cell">
+                                                        <td class="p-2 border role-cell ${isOverCapacity ? 'bg-yellow-50' : ''}">
                                                             <div class="space-y-1">
                                                                 ${signups.map(s => `
                                                                     <div class="bg-green-100 rounded px-2 py-1 text-xs md:text-sm flex justify-between items-center gap-2">
@@ -788,9 +789,10 @@
                                                                         <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s).replace(/'/g, "&#39;")})' class="text-red-600 hover:text-red-800 flex-shrink-0">✕</button>
                                                                     </div>
                                                                 `).join('')}
-                                                                ${!isFull ? `
-                                                                    <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-xs md:text-sm text-indigo-600 hover:bg-indigo-100 transition-colors">+ Sign Up</button>
-                                                                ` : '<div class="text-gray-500 text-center text-xs md:text-sm py-1">Full</div>'}
+                                                                ${isOverCapacity ? '<div class="text-xs text-orange-600 font-semibold text-center">⚠️ Over capacity</div>' : ''}
+                                                                <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-xs md:text-sm text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                                                    ${isFull ? '+ Add Extra' : '+ Sign Up'}
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     `;

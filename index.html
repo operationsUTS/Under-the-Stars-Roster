@@ -71,25 +71,29 @@
             roles: {
                 'thursday-hall': [
                     { id: 'managers', name: 'Managers', time: '9:45am-1:30pm', capacity: 2 },
-                    { id: 'hall-help', name: 'Hall Help', time: '10:00am-1:30pm', capacity: 5 },
+                    { id: 'hall-help', name: 'Hall Help', time: '10:00am-1:30pm', capacity: 4 },
                     { id: 'drinks', name: 'Drinks Trolley', time: '11:15am-1:30pm', capacity: 1 },
                     { id: 'dishes', name: 'Dishes', time: '11:30am-1:30pm', capacity: 1 },
                     { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
+                    { id: 'giveaway', name: 'Giveaway Table', time: '10:45am-12:45pm', capacity: 2 },
                 ],
                 'saturday-hall': [
                     { id: 'managers', name: 'Managers', time: '2:45pm-6:30pm', capacity: 2 },
                     { id: 'hall-help-1', name: 'Hall Help - Shift 1', time: '3:15pm-6:30pm', capacity: 3 },
-                    { id: 'hall-help-2', name: 'Hall Help - Shift 2', time: '4:45pm-6:30pm', capacity: 2 },
+                    { id: 'hall-help-2', name: 'Hall Help - Shift 2', time: '4:30pm-6:30pm (can come earlier)', capacity: 2 },
                     { id: 'drinks', name: 'Drinks Trolley', time: '4:00pm-6:30pm', capacity: 1 },
                     { id: 'dishes', name: 'Dishes', time: '4:30pm-6:30pm', capacity: 1 },
                     { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
+                    { id: 'giveaway', name: 'Giveaway Table', time: '3:45pm-5:45pm', capacity: 2 },
                 ],
                 'weekly-tasks': [
                     { id: 'wed-pickup', name: 'Wed Bakers Delight', time: '~3:45pm', capacity: 1 },
                     { id: 'thurs-pickup', name: 'Thurs Bakers Delight', time: '4:50pm', capacity: 1 },
-                    { id: 'cheesecake', name: 'Cheesecake Shop', time: '3-6pm', capacity: 1 },
+                    { id: 'cheesecake', name: 'Cheesecake Shop', time: '3-6pm Fri', capacity: 1 },
                 ]
             },
+
+            dateNotes: {},
 
             validateData(data) {
                 if (!data || typeof data !== 'object') return false;
@@ -279,20 +283,39 @@
                 const period = this.periods.find(p => p.id === this.selectedPeriod);
                 if (!period) return [];
                 const dates = [];
-                const targetDay = this.currentView === 'thursday-hall' ? 4 : 
-                                 this.currentView === 'saturday-hall' ? 6 : 3;
-                period.months.forEach(month => {
-                    const date = new Date(period.year, month - 1, 1);
-                    while (date.getMonth() === month - 1) {
-                        if (date.getDay() === targetDay) {
-                            dates.push({
-                                date: date.toISOString().split('T')[0],
-                                label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
-                            });
+                
+                if (this.currentView === 'weekly-tasks') {
+                    // For weekly tasks, show Wed-Thurs pairs
+                    period.months.forEach(month => {
+                        const date = new Date(period.year, month - 1, 1);
+                        while (date.getMonth() === month - 1) {
+                            if (date.getDay() === 3) { // Wednesday
+                                const wed = new Date(date);
+                                const thurs = new Date(date);
+                                thurs.setDate(thurs.getDate() + 1);
+                                dates.push({
+                                    date: wed.toISOString().split('T')[0],
+                                    label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
+                                });
+                            }
+                            date.setDate(date.getDate() + 1);
                         }
-                        date.setDate(date.getDate() + 1);
-                    }
-                });
+                    });
+                } else {
+                    const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
+                    period.months.forEach(month => {
+                        const date = new Date(period.year, month - 1, 1);
+                        while (date.getMonth() === month - 1) {
+                            if (date.getDay() === targetDay) {
+                                dates.push({
+                                    date: date.toISOString().split('T')[0],
+                                    label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                                });
+                            }
+                            date.setDate(date.getDate() + 1);
+                        }
+                    });
+                }
                 return dates;
             },
 
@@ -312,6 +335,15 @@
                         } catch (e) {
                             console.error('Error parsing data:', e);
                             this.restoreFromBackup();
+                        }
+                    }
+                    // Load notes from localStorage
+                    const savedNotes = localStorage.getItem('uts-date-notes');
+                    if (savedNotes) {
+                        try {
+                            this.dateNotes = JSON.parse(savedNotes);
+                        } catch (e) {
+                            this.dateNotes = {};
                         }
                     }
                 } else {
@@ -348,10 +380,35 @@
                             }
                         }
                     }
+                    // Load notes from localStorage (notes are always stored locally for simplicity)
+                    const savedNotes = localStorage.getItem('uts-date-notes');
+                    if (savedNotes) {
+                        try {
+                            this.dateNotes = JSON.parse(savedNotes);
+                        } catch (e) {
+                            this.dateNotes = {};
+                        }
+                    }
                 }
                 if (this.isInitialized) {
                     this.render();
                 }
+            },
+
+            saveNote(view, dateStr, note) {
+                const key = `${view}-${dateStr}`;
+                if (note.trim()) {
+                    this.dateNotes[key] = note.trim();
+                } else {
+                    delete this.dateNotes[key];
+                }
+                localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+                this.showNotification('Note saved');
+            },
+
+            getNote(view, dateStr) {
+                const key = `${view}-${dateStr}`;
+                return this.dateNotes[key] || '';
             },
 
             async addSignup() {

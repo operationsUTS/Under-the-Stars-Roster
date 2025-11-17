@@ -168,6 +168,7 @@
 
             async init() {
                 await this.checkConnection();
+                await this.loadHistoricalData(); // Load historical data into Supabase FIRST
                 await this.loadSignups();
                 this.isInitialized = true;
                 this.render();
@@ -193,7 +194,73 @@
                     this.connectionStatus = error ? 'error' : 'connected';
                 } catch (e) {
                     this.connectionStatus = 'error';
+                    console.error('Connection check failed:', e);
                 }
+            },
+
+            async loadHistoricalData() {
+                // Check if historical data has already been loaded to Supabase
+                const hasHistoricalData = localStorage.getItem('uts-historical-loaded-to-supabase');
+                if (hasHistoricalData) {
+                    console.log('Historical data already loaded to database');
+                    return;
+                }
+
+                console.log('Loading historical data to database...');
+
+                if (useLocalStorage) {
+                    // If using localStorage, just load it locally
+                    this.signups = JSON.parse(JSON.stringify(HISTORICAL_DATA));
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    localStorage.setItem('uts-historical-loaded-to-supabase', 'true');
+                    console.log('✓ Historical data loaded to localStorage');
+                } else {
+                    // Load to Supabase
+                    try {
+                        const insertions = [];
+                        
+                        // Convert historical data to Supabase format
+                        for (let rosterType in HISTORICAL_DATA) {
+                            for (let dateStr in HISTORICAL_DATA[rosterType]) {
+                                for (let roleId in HISTORICAL_DATA[rosterType][dateStr]) {
+                                    const volunteers = HISTORICAL_DATA[rosterType][dateStr][roleId];
+                                    volunteers.forEach(v => {
+                                        insertions.push({
+                                            roster_type: rosterType,
+                                            shift_date: dateStr,
+                                            role_id: roleId,
+                                            volunteer_name: v.name
+                                        });
+                                    });
+                                }
+                            }
+                        }
+
+                        console.log(`Inserting ${insertions.length} historical signups...`);
+                        
+                        // Insert in batches to avoid timeout
+                        const batchSize = 50;
+                        for (let i = 0; i < insertions.length; i += batchSize) {
+                            const batch = insertions.slice(i, i + batchSize);
+                            const { error } = await supabase.from('volunteer_signups').insert(batch);
+                            if (error) throw error;
+                            console.log(`Inserted batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(insertions.length/batchSize)}`);
+                        }
+
+                        localStorage.setItem('uts-historical-loaded-to-supabase', 'true');
+                        console.log('✓ Historical data loaded to Supabase successfully!');
+                        
+                    } catch (e) {
+                        console.error('Error loading historical data to Supabase:', e);
+                        // Fall back to localStorage
+                        this.signups = JSON.parse(JSON.stringify(HISTORICAL_DATA));
+                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                        localStorage.setItem('uts-historical-loaded-to-supabase', 'true');
+                        console.log('✓ Historical data loaded to localStorage (fallback)');
+                    }
+                }
+
+                this.createBackup();
             },
 
             autoBackup() {
@@ -230,23 +297,6 @@
             },
 
             async loadSignups() {
-                // Load historical data on first run
-                const hasHistoricalData = localStorage.getItem('uts-historical-loaded');
-                if (!hasHistoricalData) {
-                    console.log('Loading historical data...');
-                    this.signups = JSON.parse(JSON.stringify(HISTORICAL_DATA));
-                    localStorage.setItem('uts-historical-loaded', 'true');
-                    if (useLocalStorage) {
-                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                    }
-                    this.createBackup();
-                    console.log('✓ Historical data loaded successfully!');
-                    if (this.isInitialized) {
-                        this.render();
-                    }
-                    return;
-                }
-
                 if (useLocalStorage) {
                     const saved = localStorage.getItem('uts-roster');
                     if (saved) {

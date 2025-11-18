@@ -19,8 +19,51 @@
         
         @media (max-width: 768px) {
             .role-cell {
-                min-width: 140px;
+                min-width: 160px;
             }
+        }
+        
+        .progress-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .date-past { opacity: 0.5; background-color: #f3f4f6 !important; }
+        .date-today { background-color: #fef3c7 !important; border-left: 4px solid #f59e0b; }
+        .date-future { }
+        
+        .coverage-excellent { background-color: #dcfce7; }
+        .coverage-good { background-color: #fef9c3; }
+        .coverage-poor { background-color: #fee2e2; }
+        
+        .notification-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -59,6 +102,11 @@
             isInitialized: false,
             isAdmin: false,
             adminView: 'dashboard',
+            dateNotes: {},
+            giveawayDates: {},
+            showMySignups: false,
+            searchName: '',
+            isLoading: false,
 
             periods: [
                 { id: 'oct-dec-2025', label: 'October - December 2025', months: [10,11,12], year: 2025 },
@@ -93,7 +141,94 @@
                 ]
             },
 
-            dateNotes: {},
+            getVisibleRoles(view) {
+                const allRoles = this.roles[view] || [];
+                return allRoles.filter(role => {
+                    if (role.id !== 'giveaway') return true;
+                    // Check if ANY date in current period has giveaway enabled
+                    return this.hasAnyGiveaway(view);
+                });
+            },
+
+            hasAnyGiveaway(view) {
+                const dates = this.getDatesForPeriod();
+                return dates.some(d => this.isGiveawayEnabled(view, d.date));
+            },
+
+            isGiveawayEnabled(view, dateStr) {
+                const key = `${view}-${dateStr}`;
+                return this.giveawayDates[key] === true;
+            },
+
+            toggleGiveaway(view, dateStr) {
+                const key = `${view}-${dateStr}`;
+                this.giveawayDates[key] = !this.giveawayDates[key];
+                localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+                this.showNotification(this.giveawayDates[key] ? 'Giveaway table enabled' : 'Giveaway table disabled');
+                this.render();
+            },
+
+            getDateClass(dateStr) {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const date = new Date(dateStr);
+                date.setHours(0,0,0,0);
+                
+                if (date < today) return 'date-past';
+                if (date.getTime() === today.getTime()) return 'date-today';
+                return 'date-future';
+            },
+
+            getCoverageClass(filled, total) {
+                const percentage = (filled / total) * 100;
+                if (percentage >= 90) return 'coverage-excellent';
+                if (percentage >= 60) return 'coverage-good';
+                return 'coverage-poor';
+            },
+
+            getMySignups() {
+                if (!this.searchName.trim()) {
+                    alert('Please enter your name to find your signups');
+                    return;
+                }
+                
+                const name = this.searchName.trim().toLowerCase();
+                const mySignups = [];
+                
+                for (let rosterType in this.signups) {
+                    for (let dateStr in this.signups[rosterType]) {
+                        for (let roleId in this.signups[rosterType][dateStr]) {
+                            const volunteers = this.signups[rosterType][dateStr][roleId];
+                            volunteers.forEach(v => {
+                                if (v.name.toLowerCase().includes(name)) {
+                                    const role = this.roles[rosterType]?.find(r => r.id === roleId);
+                                    const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
+                                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Weekly Tasks';
+                                    mySignups.push({
+                                        date: dateStr,
+                                        dateLabel: new Date(dateStr).toLocaleDateString('en-NZ', { 
+                                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
+                                        }),
+                                        roster: rosterName,
+                                        role: role?.name || roleId,
+                                        time: role?.time || ''
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                mySignups.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                if (mySignups.length === 0) {
+                    this.showNotification(`No signups found for "${this.searchName}"`, 'warning');
+                } else {
+                    this.showMySignups = true;
+                    this.mySignupsList = mySignups;
+                    this.render();
+                }
+            },
 
             validateData(data) {
                 if (!data || typeof data !== 'object') return false;
@@ -162,7 +297,7 @@
                     return;
                 }
                 const notif = document.createElement('div');
-                notif.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                notif.className = `notification-enter fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
                     type === 'success' ? 'bg-green-600' : type === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
                 } text-white font-semibold`;
                 notif.textContent = message;
@@ -171,9 +306,14 @@
             },
 
             async init() {
+                this.isLoading = true;
+                this.render();
+                
                 await this.checkConnection();
-                await this.loadHistoricalData(); // Load historical data into Supabase FIRST
+                await this.loadHistoricalData();
                 await this.loadSignups();
+                
+                this.isLoading = false;
                 this.isInitialized = true;
                 this.render();
 
@@ -203,7 +343,6 @@
             },
 
             async loadHistoricalData() {
-                // Check if historical data has already been loaded to Supabase
                 const hasHistoricalData = localStorage.getItem('uts-historical-loaded-to-supabase');
                 if (hasHistoricalData) {
                     console.log('Historical data already loaded to database');
@@ -213,17 +352,14 @@
                 console.log('Loading historical data to database...');
 
                 if (useLocalStorage) {
-                    // If using localStorage, just load it locally
                     this.signups = JSON.parse(JSON.stringify(HISTORICAL_DATA));
                     localStorage.setItem('uts-roster', JSON.stringify(this.signups));
                     localStorage.setItem('uts-historical-loaded-to-supabase', 'true');
                     console.log('✓ Historical data loaded to localStorage');
                 } else {
-                    // Load to Supabase
                     try {
                         const insertions = [];
                         
-                        // Convert historical data to Supabase format
                         for (let rosterType in HISTORICAL_DATA) {
                             for (let dateStr in HISTORICAL_DATA[rosterType]) {
                                 for (let roleId in HISTORICAL_DATA[rosterType][dateStr]) {
@@ -242,7 +378,6 @@
 
                         console.log(`Inserting ${insertions.length} historical signups...`);
                         
-                        // Insert in batches to avoid timeout
                         const batchSize = 50;
                         for (let i = 0; i < insertions.length; i += batchSize) {
                             const batch = insertions.slice(i, i + batchSize);
@@ -256,7 +391,6 @@
                         
                     } catch (e) {
                         console.error('Error loading historical data to Supabase:', e);
-                        // Fall back to localStorage
                         this.signups = JSON.parse(JSON.stringify(HISTORICAL_DATA));
                         localStorage.setItem('uts-roster', JSON.stringify(this.signups));
                         localStorage.setItem('uts-historical-loaded-to-supabase', 'true');
@@ -285,11 +419,10 @@
                 const dates = [];
                 
                 if (this.currentView === 'weekly-tasks') {
-                    // For weekly tasks, show Wed-Thurs pairs
                     period.months.forEach(month => {
                         const date = new Date(period.year, month - 1, 1);
                         while (date.getMonth() === month - 1) {
-                            if (date.getDay() === 3) { // Wednesday
+                            if (date.getDay() === 3) {
                                 const wed = new Date(date);
                                 const thurs = new Date(date);
                                 thurs.setDate(thurs.getDate() + 1);
@@ -337,13 +470,20 @@
                             this.restoreFromBackup();
                         }
                     }
-                    // Load notes from localStorage
                     const savedNotes = localStorage.getItem('uts-date-notes');
                     if (savedNotes) {
                         try {
                             this.dateNotes = JSON.parse(savedNotes);
                         } catch (e) {
                             this.dateNotes = {};
+                        }
+                    }
+                    const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+                    if (savedGiveaway) {
+                        try {
+                            this.giveawayDates = JSON.parse(savedGiveaway);
+                        } catch (e) {
+                            this.giveawayDates = {};
                         }
                     }
                 } else {
@@ -380,13 +520,20 @@
                             }
                         }
                     }
-                    // Load notes from localStorage (notes are always stored locally for simplicity)
                     const savedNotes = localStorage.getItem('uts-date-notes');
                     if (savedNotes) {
                         try {
                             this.dateNotes = JSON.parse(savedNotes);
                         } catch (e) {
                             this.dateNotes = {};
+                        }
+                    }
+                    const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+                    if (savedGiveaway) {
+                        try {
+                            this.giveawayDates = JSON.parse(savedGiveaway);
+                        } catch (e) {
+                            this.giveawayDates = {};
                         }
                     }
                 }
@@ -427,7 +574,7 @@
                         }
                         localStorage.setItem('uts-roster', JSON.stringify(this.signups));
                         this.createBackup();
-                        this.showNotification('Signed up successfully!');
+                        this.showNotification('✓ Signed up successfully!');
                     } catch (e) {
                         this.signups = originalSignups;
                         this.showNotification('Error signing up: ' + e.message, 'error');
@@ -445,7 +592,7 @@
                             }).select();
                             if (error) throw error;
                             await this.loadSignups();
-                            this.showNotification('Signed up successfully!');
+                            this.showNotification('✓ Signed up successfully!');
                             break;
                         } catch (e) {
                             retries--;
@@ -474,7 +621,7 @@
                         }
                         localStorage.setItem('uts-roster', JSON.stringify(this.signups));
                         this.createBackup();
-                        this.showNotification('Removed successfully');
+                        this.showNotification('✓ Removed successfully');
                     } catch (e) {
                         this.signups = originalSignups;
                         this.showNotification('Error removing: ' + e.message, 'error');
@@ -487,7 +634,7 @@
                             const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
                             if (error) throw error;
                             await this.loadSignups();
-                            this.showNotification('Removed successfully');
+                            this.showNotification('✓ Removed successfully');
                             break;
                         } catch (e) {
                             retries--;
@@ -506,8 +653,25 @@
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
             },
 
-            // ADMIN FUNCTIONS
-            
+            getRosterStats() {
+                const dates = this.getDatesForPeriod();
+                const roles = this.getVisibleRoles(this.currentView);
+                let totalSlots = 0;
+                let filledSlots = 0;
+                let needsHelp = 0;
+                
+                dates.forEach(d => {
+                    roles.forEach(role => {
+                        const signups = this.getSignups(this.currentView, d.date, role.id);
+                        totalSlots += role.capacity;
+                        filledSlots += Math.min(signups.length, role.capacity);
+                        if (signups.length < role.capacity) needsHelp++;
+                    });
+                });
+                
+                return { totalSlots, filledSlots, needsHelp, coverage: Math.round((filledSlots / totalSlots) * 100) };
+            },
+
             loginAdmin() {
                 const password = prompt('Enter admin password:');
                 if (password === ADMIN_PASSWORD) {
@@ -607,7 +771,8 @@
                     totalSignups: 0,
                     volunteerList: new Set(),
                     byRoster: {},
-                    coverageByDate: {}
+                    coverageByDate: {},
+                    volunteerCounts: {}
                 };
                 
                 for (let rosterType in this.signups) {
@@ -628,12 +793,22 @@
                             stats.coverageByDate[dateStr].total += role?.capacity || 1;
                             
                             volunteers.forEach(v => {
-                                stats.volunteerList.add(v.name);
-                                stats.byRoster[rosterType].volunteers.add(v.name);
+                                const cleanName = v.name.replace(/\s*\(.*?\)\s*/g, '').trim();
+                                stats.volunteerList.add(cleanName);
+                                stats.byRoster[rosterType].volunteers.add(cleanName);
+                                
+                                if (!stats.volunteerCounts[cleanName]) {
+                                    stats.volunteerCounts[cleanName] = 0;
+                                }
+                                stats.volunteerCounts[cleanName]++;
                             });
                         }
                     }
                 }
+                
+                stats.topVolunteers = Object.entries(stats.volunteerCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
                 
                 return stats;
             },
@@ -689,13 +864,63 @@
 
             render() {
                 const appEl = document.getElementById('app');
-                if (this.currentView === 'welcome') {
+                
+                if (this.isLoading) {
+                    appEl.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="loading-spinner mx-auto mb-4"></div>
+                                <p class="text-gray-600">Loading roster...</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (this.showMySignups) {
+                    appEl.innerHTML = this.renderMySignups();
+                } else if (this.currentView === 'welcome') {
                     appEl.innerHTML = this.renderWelcome();
                 } else if (this.currentView === 'admin') {
                     appEl.innerHTML = this.renderAdmin();
                 } else {
                     appEl.innerHTML = this.renderRoster();
                 }
+            },
+
+            renderMySignups() {
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h2 class="text-2xl font-bold">My Signups: ${this.searchName}</h2>
+                                    <button onclick="app.showMySignups=false; app.render();" class="text-gray-600 hover:text-gray-800">✕ Close</button>
+                                </div>
+                                
+                                ${this.mySignupsList.length === 0 ? `
+                                    <p class="text-gray-600">No signups found.</p>
+                                ` : `
+                                    <div class="space-y-3">
+                                        ${this.mySignupsList.map(s => `
+                                            <div class="p-4 border rounded-lg ${this.getDateClass(s.date)}">
+                                                <div class="font-bold text-lg mb-1">${s.dateLabel}</div>
+                                                <div class="text-sm text-gray-700">
+                                                    <span class="font-semibold">${s.roster}</span> - ${s.role}
+                                                    ${s.time ? `<span class="text-gray-500"> (${s.time})</span>` : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                                
+                                <button onclick="app.showMySignups=false; app.render();" class="mt-6 w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                    Back to Roster
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
             },
 
             renderWelcome() {
@@ -726,6 +951,22 @@
                                             <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a> as soon as possible</strong></li>
                                         </ol>
                                     </div>
+                                    
+                                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                                        <h3 class="font-bold text-green-900 mb-2">Find Your Signups:</h3>
+                                        <div class="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Enter your name" 
+                                                id="searchNameInput"
+                                                class="flex-1 px-4 py-2 border rounded-lg"
+                                                onkeypress="if(event.key==='Enter'){app.searchName=this.value; app.getMySignups();}"
+                                            />
+                                            <button onclick="app.searchName=document.getElementById('searchNameInput').value; app.getMySignups();" class="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700">
+                                                Search
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     <p><strong>Meal Managers:</strong> Ani Stace, Carol Machaj, Keiran Stuart, Carl Fenton, Rose Kent-Wilson, Adrian De Souza</p>
                                     <p><strong>Venue:</strong> Cliff Rd community hall, 45 Cliff Rd</p>
@@ -735,7 +976,7 @@
                                 <div class="space-y-3">
                                     <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
                                     <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
-                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Weekly Tasks →</button>
+                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
                                 </div>
                             </div>
                         </div>
@@ -755,7 +996,6 @@
                                     <button onclick="app.logoutAdmin()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">Logout</button>
                                 </div>
 
-                                <!-- Stats Overview -->
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                                     <div class="bg-blue-50 p-6 rounded-lg">
                                         <h3 class="text-lg font-bold text-blue-900">Total Signups</h3>
@@ -771,7 +1011,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Action Buttons -->
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                                     <button onclick="app.addNextQuarter()" class="bg-indigo-600 text-white p-4 rounded-lg font-bold hover:bg-indigo-700 transition-colors">
                                         ➕ Add Next Quarter
@@ -787,7 +1026,6 @@
                                     </button>
                                 </div>
 
-                                <!-- Current Periods -->
                                 <div class="mb-8">
                                     <h2 class="text-2xl font-bold mb-4">Current Periods</h2>
                                     <div class="bg-gray-50 p-4 rounded-lg">
@@ -800,7 +1038,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Coverage Report -->
                                 <div class="mb-8">
                                     <h2 class="text-2xl font-bold mb-4">Coverage by Roster Type</h2>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -811,7 +1048,6 @@
                                             return `
                                                 <div class="bg-gray-50 p-4 rounded-lg">
                                                     <h3 class="font-bold text-lg mb-2">${rosterName}</h3>
-                                                    <p class="text-gray-700">Signups: <strong>${data.total}</strong></p>
                                                     <p class="text-gray-700">Volunteers: <strong>${data.volunteers.size}</strong></p>
                                                 </div>
                                             `;
@@ -819,9 +1055,25 @@
                                     </div>
                                 </div>
 
-                                <!-- Active Volunteers List -->
                                 <div class="mb-8">
-                                    <h2 class="text-2xl font-bold mb-4">All Active Volunteers</h2>
+                                    <h2 class="text-2xl font-bold mb-4">Top 10 Most Active Volunteers</h2>
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <div class="space-y-2">
+                                            ${stats.topVolunteers.map(([name, count], idx) => `
+                                                <div class="flex justify-between items-center p-3 bg-white rounded border">
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="font-bold text-lg text-gray-400">#${idx + 1}</span>
+                                                        <span class="font-semibold">${name}</span>
+                                                    </div>
+                                                    <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-bold">${count} shifts</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-8">
+                                    <h2 class="text-2xl font-bold mb-4">All Active Volunteers (${stats.volunteerList.size})</h2>
                                     <div class="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
                                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             ${Array.from(stats.volunteerList).sort().map(name => `
@@ -831,13 +1083,12 @@
                                     </div>
                                 </div>
 
-                                <!-- Quick Navigation -->
                                 <div class="border-t pt-6">
                                     <h2 class="text-2xl font-bold mb-4">Quick Access to Rosters</h2>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <button onclick="app.currentView='thursday-hall'; app.render();" class="bg-blue-600 text-white p-4 rounded-lg font-bold hover:bg-blue-700 transition-colors">Thursday Hall →</button>
                                         <button onclick="app.currentView='saturday-hall'; app.render();" class="bg-orange-600 text-white p-4 rounded-lg font-bold hover:bg-orange-700 transition-colors">Saturday Hall →</button>
-                                        <button onclick="app.currentView='weekly-tasks'; app.render();" class="bg-pink-600 text-white p-4 rounded-lg font-bold hover:bg-pink-700 transition-colors">Weekly Tasks →</button>
+                                        <button onclick="app.currentView='weekly-tasks'; app.render();" class="bg-pink-600 text-white p-4 rounded-lg font-bold hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
                                     </div>
                                 </div>
                             </div>
@@ -848,15 +1099,17 @@
 
             renderRoster() {
                 const dates = this.getDatesForPeriod();
-                const roles = this.roles[this.currentView] || [];
+                const roles = this.getVisibleRoles(this.currentView);
                 const title = this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
                              this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 
-                             'Weekly Tasks';
+                             'Additional Weekly Tasks';
 
                 const statusColor = this.connectionStatus === 'connected' ? 'green' : 
                                    this.connectionStatus === 'error' ? 'red' : 'yellow';
                 const statusText = this.connectionStatus === 'connected' ? '● Online' : 
                                   this.connectionStatus === 'error' ? '● Offline' : '● Connecting...';
+
+                const stats = this.getRosterStats();
 
                 return `
                     <div class="min-h-screen p-2 md:p-4">
@@ -870,6 +1123,18 @@
                                 <div class="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
                                     <div class="flex-1">
                                         <h1 class="text-2xl md:text-3xl font-bold mb-2">${title}</h1>
+                                        
+                                        <div class="bg-purple-50 border-l-4 border-purple-500 p-3 rounded mb-3">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="font-bold text-purple-900">Coverage: ${stats.coverage}%</span>
+                                                <span class="text-sm text-purple-700">${stats.filledSlots}/${stats.totalSlots} slots filled</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-fill bg-purple-600" style="width: ${stats.coverage}%"></div>
+                                            </div>
+                                            ${stats.needsHelp > 0 ? `<p class="text-sm text-purple-700 mt-2">⚠️ ${stats.needsHelp} slots still need volunteers</p>` : '<p class="text-sm text-purple-700 mt-2">✓ Fully covered!</p>'}
+                                        </div>
+                                        
                                         <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
                                             <p class="text-sm text-blue-900">
                                                 <strong>Questions?</strong> Contact: <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a>
@@ -889,7 +1154,7 @@
                                 <table class="w-full border-collapse">
                                     <thead>
                                         <tr class="bg-gray-800 text-white">
-                                            <th class="p-2 md:p-3 text-left sticky left-0 bg-gray-800 z-20 min-w-[80px]">Date</th>
+                                            <th class="p-2 md:p-3 text-left sticky left-0 bg-gray-800 z-20 min-w-[120px]">Date</th>
                                             ${roles.map(role => `
                                                 <th class="p-2 md:p-3 text-center role-cell">
                                                     <div class="font-bold text-sm md:text-base">${role.name}</div>
@@ -900,24 +1165,58 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${dates.map((d, idx) => `
-                                            <tr class="${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                                <td class="p-2 md:p-3 font-semibold sticky left-0 bg-inherit border-r z-10 text-sm md:text-base">${d.label}</td>
+                                        ${dates.map((d, idx) => {
+                                            const note = this.getNote(this.currentView, d.date);
+                                            const dateClass = this.getDateClass(d.date);
+                                            const hasGiveaway = this.isGiveawayEnabled(this.currentView, d.date);
+                                            
+                                            return `
+                                            <tr class="${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${dateClass}">
+                                                <td class="p-2 md:p-3 font-semibold sticky left-0 bg-inherit border-r z-10 text-sm md:text-base">
+                                                    <div class="mb-1">${d.label}</div>
+                                                    ${this.isAdmin ? `
+                                                        <div class="space-y-1">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="📝 Add note..." 
+                                                                value="${note}"
+                                                                onchange="app.saveNote('${this.currentView}', '${d.date}', this.value); app.render();"
+                                                                class="w-full text-xs p-1 border rounded focus:ring-2 focus:ring-blue-500"
+                                                            />
+                                                            ${this.currentView !== 'weekly-tasks' ? `
+                                                                <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        ${hasGiveaway ? 'checked' : ''}
+                                                                        onchange="app.toggleGiveaway('${this.currentView}', '${d.date}');"
+                                                                        class="rounded"
+                                                                    />
+                                                                    <span>🎁 Giveaway table</span>
+                                                                </label>
+                                                            ` : ''}
+                                                        </div>
+                                                    ` : (note ? `<div class="text-xs text-gray-600 italic mt-1">📝 ${note}</div>` : '')}
+                                                </td>
                                                 ${roles.map(role => {
                                                     const signups = this.getSignups(this.currentView, d.date, role.id);
                                                     const isFull = signups.length >= role.capacity;
                                                     const isOverCapacity = signups.length > role.capacity;
+                                                    const coverageClass = this.getCoverageClass(signups.length, role.capacity);
+                                                    
                                                     return `
-                                                        <td class="p-2 border role-cell ${isOverCapacity ? 'bg-yellow-50' : ''}">
+                                                        <td class="p-2 border role-cell ${coverageClass}">
                                                             <div class="space-y-1">
+                                                                <div class="text-xs text-gray-600 mb-1">
+                                                                    ${signups.length}/${role.capacity} filled
+                                                                </div>
                                                                 ${signups.map(s => `
-                                                                    <div class="bg-green-100 rounded px-2 py-1 text-xs md:text-sm flex justify-between items-center gap-2">
-                                                                        <span class="truncate">${s.name}</span>
-                                                                        <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s).replace(/'/g, "&#39;")})' class="text-red-600 hover:text-red-800 flex-shrink-0">✕</button>
+                                                                    <div class="bg-white rounded px-2 py-1 text-xs md:text-sm flex justify-between items-center gap-2 shadow-sm border">
+                                                                        <span class="truncate font-medium">${s.name}</span>
+                                                                        <button onclick='app.removeSignup("${this.currentView}", "${d.date}", "${role.id}", ${JSON.stringify(s).replace(/'/g, "&#39;")})' class="text-red-600 hover:text-red-800 flex-shrink-0 font-bold">✕</button>
                                                                     </div>
                                                                 `).join('')}
                                                                 ${isOverCapacity ? '<div class="text-xs text-orange-600 font-semibold text-center">⚠️ Over capacity</div>' : ''}
-                                                                <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-1 text-xs md:text-sm text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                                                <button onclick='app.selectedSlot={view:"${this.currentView}",dateStr:"${d.date}",roleId:"${role.id}",dateLabel:"${d.label}",roleName:"${role.name}"}; app.showModal=true; app.render();' class="w-full bg-indigo-50 border-2 border-dashed border-indigo-300 rounded px-2 py-2 text-xs md:text-sm text-indigo-600 hover:bg-indigo-100 transition-colors font-semibold">
                                                                     ${isFull ? '+ Add Extra' : '+ Sign Up'}
                                                                 </button>
                                                             </div>
@@ -925,24 +1224,49 @@
                                                     `;
                                                 }).join('')}
                                             </tr>
-                                        `).join('')}
+                                        `}).join('')}
                                     </tbody>
                                 </table>
+                            </div>
+                            
+                            <div class="mt-4 bg-white rounded-lg shadow-lg p-4 text-sm text-gray-600">
+                                <div class="flex flex-wrap gap-4 items-center justify-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-4 h-4 bg-gray-200 rounded"></div>
+                                        <span>Past date</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-4 h-4 date-today rounded"></div>
+                                        <span>Today</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-4 h-4 coverage-excellent rounded"></div>
+                                        <span>Well covered</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-4 h-4 coverage-good rounded"></div>
+                                        <span>Moderate</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-4 h-4 coverage-poor rounded"></div>
+                                        <span>Needs help</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         ${this.showModal ? `
                             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                                <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
                                     <h3 class="text-xl font-bold mb-4">Sign Up for Shift</h3>
                                     <div class="mb-4 p-3 bg-gray-50 rounded text-sm">
                                         <div><strong>Date:</strong> ${this.selectedSlot.dateLabel}</div>
                                         <div><strong>Role:</strong> ${this.selectedSlot.roleName}</div>
                                     </div>
-                                    <input type="text" id="volName" placeholder="Enter your name" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${this.volunteerName}" onkeypress="if(event.key==='Enter'){app.volunteerName=this.value; app.addSignup();}">
+                                    <input type="text" id="volName" placeholder="Enter your name" class="w-full px-4 py-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg" value="${this.volunteerName}" onkeypress="if(event.key==='Enter'){app.volunteerName=this.value; app.addSignup();}" autofocus>
                                     <div class="flex gap-3">
-                                        <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors">Cancel</button>
-                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.addSignup();" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">Sign Up</button>
+                                        <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-200 px-4 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors">Cancel</button>
+                                        <button onclick="app.volunteerName=document.getElementById('volName').value; app.addSignup();" class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">Sign Up</button>
                                     </div>
                                 </div>
                             </div>
@@ -955,4 +1279,5 @@
         window.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
-</html>
+</html>700">Signups: <strong>${data.total}</strong></p>
+                                                    <p class="text-gray-

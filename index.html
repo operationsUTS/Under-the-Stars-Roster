@@ -267,7 +267,7 @@
                                 if (v.name.toLowerCase().includes(name)) {
                                     const role = this.roles[rosterType]?.find(r => r.id === roleId);
                                     const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
-                                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Weekly Tasks';
+                                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
                                     mySignups.push({
                                         date: dateStr,
                                         dateLabel: new Date(dateStr).toLocaleDateString('en-NZ', { 
@@ -764,6 +764,9 @@
             },
 
             getNextShiftStats() {
+                // Don't show progress bar for weekly tasks
+                if (this.currentView === 'weekly-tasks') return null;
+                
                 const nextDate = this.getNextUpcomingDate();
                 if (!nextDate) return null;
                 
@@ -873,7 +876,7 @@
                 
                 for (let rosterType in this.signups) {
                     const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
-                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Weekly Tasks';
+                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
                     
                     for (let dateStr in this.signups[rosterType]) {
                         const date = new Date(dateStr);
@@ -1183,7 +1186,7 @@
                                 <div class="space-y-3">
                                     <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
                                     <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
-                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Weekly Tasks →</button>
+                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
                                 </div>
                             </div>
                         </div>
@@ -1217,7 +1220,7 @@
                                     <div>
                                         <h1 class="text-2xl md:text-3xl font-bold mb-1">
                                             ${this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
-                                              this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 'Weekly Tasks'}
+                                              this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 'Additional Weekly Tasks'}
                                         </h1>
                                         <p class="text-gray-600">${currentPeriod.label}</p>
                                     </div>
@@ -1390,6 +1393,148 @@
                 `;
             },
 
+            renderAdminRoster(view) {
+                const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
+                const dates = this.getDatesForView(view);
+                const roles = this.getVisibleRoles(view);
+                const viewName = view === 'thursday-hall' ? 'Thursday Hall' : 
+                                view === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
+
+                return `
+                    <div class="mb-4">
+                        <h3 class="text-xl font-bold mb-3">${viewName}</h3>
+                        <select onchange="app.selectedPeriod=this.value; app.render();" class="p-2 border rounded-lg mb-4">
+                            ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    
+                    <div class="table-container overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                                <tr>
+                                    <th class="p-2 text-left text-sm font-semibold border">Date</th>
+                                    ${roles.map(role => `
+                                        <th class="p-2 text-left text-sm font-semibold border">
+                                            <div class="font-bold">${role.name}</div>
+                                            <div class="text-xs opacity-90">${role.time}</div>
+                                        </th>
+                                    `).join('')}
+                                    <th class="p-2 text-left text-sm font-semibold border">Notes</th>
+                                    ${view !== 'weekly-tasks' ? '<th class="p-2 text-center text-sm font-semibold border">Giveaway</th>' : ''}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dates.map((d, i) => {
+                                    const dateClass = this.getDateClass(d.date);
+                                    return `
+                                    <tr class="border ${dateClass}">
+                                        <td class="p-2 font-semibold text-sm border ${dateClass}">
+                                            ${d.label}
+                                        </td>
+                                        ${roles.map(role => {
+                                            if (role.id === 'giveaway' && !this.isGiveawayEnabled(view, d.date)) {
+                                                return '';
+                                            }
+                                            
+                                            const signups = this.getSignups(view, d.date, role.id);
+                                            const slotsLeft = role.capacity - signups.length;
+                                            return `
+                                            <td class="p-2 text-sm border">
+                                                ${signups.map(signup => {
+                                                    const isEditing = this.editingSignup && 
+                                                                    this.editingSignup.view === view && 
+                                                                    this.editingSignup.dateStr === d.date && 
+                                                                    this.editingSignup.roleId === role.id && 
+                                                                    this.editingSignup.signup === signup;
+                                                    
+                                                    return `
+                                                        <div class="mb-1 flex items-center gap-1 volunteer-item">
+                                                            ${isEditing ? `
+                                                                <input 
+                                                                    type="text" 
+                                                                    value="${signup.name}" 
+                                                                    id="editInput-${i}"
+                                                                    class="flex-1 px-2 py-1 border-2 border-blue-500 rounded"
+                                                                    onkeypress="if(event.key==='Enter'){app.saveEdit(this.value);}"
+                                                                />
+                                                                <button onclick="app.saveEdit(document.getElementById('editInput-${i}').value);" class="text-green-600 hover:text-green-800 text-lg">✓</button>
+                                                                <button onclick="app.cancelEdit();" class="text-red-600 hover:text-red-800 text-lg">✕</button>
+                                                            ` : `
+                                                                <span class="flex-1">✓ ${signup.name}</span>
+                                                                <button onclick="app.startEdit('${view}', '${d.date}', '${role.id}', app.getSignups('${view}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                        class="edit-icon text-sm">✏️</button>
+                                                                <button onclick="app.removeSignup('${view}', '${d.date}', '${role.id}', app.getSignups('${view}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                        class="text-red-600 hover:text-red-800 text-sm ml-1">✕</button>
+                                                            `}
+                                                        </div>
+                                                    `;
+                                                }).join('')}
+                                                ${slotsLeft > 0 && (!this.editingSignup || this.editingSignup.view !== view || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id) ? 
+                                                    Array(slotsLeft).fill(0).map(() => `
+                                                        <button onclick="app.selectedSlot={view:'${view}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+                                                                class="w-full text-left px-2 py-1 mb-1 border-2 border-dashed border-gray-300 rounded hover:border-indigo-500 hover:bg-indigo-50 text-gray-500 text-xs">
+                                                            + Add volunteer
+                                                        </button>
+                                                    `).join('') : ''
+                                                }
+                                            </td>
+                                        `;
+                                        }).join('')}
+                                        <td class="p-2 border">
+                                            <input type="text" 
+                                                   placeholder="Add note..." 
+                                                   value="${this.getNote(view, d.date)}"
+                                                   onchange="app.saveNote('${view}', '${d.date}', this.value)"
+                                                   class="w-full p-1 text-xs border rounded" />
+                                        </td>
+                                        ${view !== 'weekly-tasks' ? `
+                                            <td class="p-2 text-center border">
+                                                <input type="checkbox" 
+                                                       ${this.isGiveawayEnabled(view, d.date) ? 'checked' : ''}
+                                                       onchange="app.toggleGiveaway('${view}', '${d.date}')"
+                                                       class="w-4 h-4" />
+                                            </td>
+                                        ` : ''}
+                                    </tr>
+                                `}).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    ${this.showModal ? `
+                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this){app.showModal=false; app.render();}">
+                            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                                <h3 class="text-xl font-bold mb-4">Sign Up</h3>
+                                <input type="text" 
+                                       placeholder="Enter volunteer name" 
+                                       value="${this.volunteerName}"
+                                       oninput="app.volunteerName=this.value"
+                                       onkeypress="if(event.key==='Enter'){app.addSignup();}"
+                                       class="w-full p-3 border rounded-lg mb-4"
+                                       autofocus />
+                                <div class="flex gap-2">
+                                    <button onclick="app.addSignup()" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                        Confirm
+                                    </button>
+                                    <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            },
+
+            getDatesForView(view) {
+                // Save current view temporarily
+                const savedView = this.currentView;
+                this.currentView = view;
+                const dates = this.getDatesForPeriod();
+                this.currentView = savedView;
+                return dates;
+            },
+
             renderAdmin() {
                 const stats = this.generateReport();
                 
@@ -1405,6 +1550,9 @@
                                 <div class="flex gap-2 mb-6 flex-wrap">
                                     <button onclick="app.adminView='dashboard'; app.render();" class="px-4 py-2 ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Dashboard</button>
                                     <button onclick="app.adminView='volunteers'; app.render();" class="px-4 py-2 ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Volunteers by Role</button>
+                                    <button onclick="app.adminView='thursday-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'thursday-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Thursday Roster</button>
+                                    <button onclick="app.adminView='saturday-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'saturday-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Saturday Roster</button>
+                                    <button onclick="app.adminView='weekly-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'weekly-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Additional Tasks</button>
                                     <button onclick="app.adminView='settings'; app.render();" class="px-4 py-2 ${this.adminView === 'settings' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Settings</button>
                                 </div>
 
@@ -1495,7 +1643,7 @@
                                         ${Object.entries(stats.byRoster).map(([type, data]) => `
                                             <div class="mb-3">
                                                 <div class="font-bold mb-1">
-                                                    ${type === 'thursday-hall' ? 'Thursday Hall' : type === 'saturday-hall' ? 'Saturday Hall' : 'Weekly Tasks'}
+                                                    ${type === 'thursday-hall' ? 'Thursday Hall' : type === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks'}
                                                     <span class="text-gray-600 font-normal text-sm">(${data.total} signups, ${data.volunteers.size} volunteers)</span>
                                                 </div>
                                                 <div class="text-sm text-gray-600">
@@ -1541,7 +1689,13 @@
                                             </div>
                                         </div>
                                     </div>
-                                ` : `
+                                ` : this.adminView === 'thursday-roster' ? 
+                                    this.renderAdminRoster('thursday-hall') :
+                                  this.adminView === 'saturday-roster' ? 
+                                    this.renderAdminRoster('saturday-hall') :
+                                  this.adminView === 'weekly-roster' ? 
+                                    this.renderAdminRoster('weekly-tasks') :
+                                `
                                     <div class="space-y-4">
                                         <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
                                             📊 Export to CSV

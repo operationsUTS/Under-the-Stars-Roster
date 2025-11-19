@@ -777,7 +777,9 @@
                     filledSlots += Math.min(signups.length, role.capacity);
                 });
                 
-                const date = new Date(nextDate);
+                // Parse the date string correctly (YYYY-MM-DD format)
+                const [year, month, day] = nextDate.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
                 const dateLabel = date.toLocaleDateString('en-NZ', { 
                     weekday: 'long', day: 'numeric', month: 'long'
                 });
@@ -917,6 +919,13 @@
                         drinks: new Set(),
                         dishes: new Set(),
                         laundry: new Set()
+                    },
+                    volunteerCountsByRole: {
+                        managers: {},
+                        hallHelp: {},
+                        drinks: {},
+                        dishes: {},
+                        laundry: {}
                     }
                 };
                 
@@ -938,26 +947,47 @@
                             stats.coverageByDate[dateStr].total += role?.capacity || 1;
                             
                             volunteers.forEach(v => {
-                                const cleanName = v.name.replace(/\s*\(.*?\)\s*/g, '').trim();
-                                stats.volunteerList.add(cleanName);
-                                stats.byRoster[rosterType].volunteers.add(cleanName);
+                                // Keep the full name - don't strip parentheses
+                                const fullName = v.name.trim();
+                                stats.volunteerList.add(fullName);
+                                stats.byRoster[rosterType].volunteers.add(fullName);
                                 
-                                if (!stats.volunteerCounts[cleanName]) {
-                                    stats.volunteerCounts[cleanName] = 0;
+                                if (!stats.volunteerCounts[fullName]) {
+                                    stats.volunteerCounts[fullName] = 0;
                                 }
-                                stats.volunteerCounts[cleanName]++;
+                                stats.volunteerCounts[fullName]++;
                                 
-                                // Categorize by role
+                                // Categorize by role and count
                                 if (roleId === 'managers') {
-                                    stats.volunteersByRole.managers.add(cleanName);
+                                    stats.volunteersByRole.managers.add(fullName);
+                                    if (!stats.volunteerCountsByRole.managers[fullName]) {
+                                        stats.volunteerCountsByRole.managers[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.managers[fullName]++;
                                 } else if (roleId.includes('hall-help')) {
-                                    stats.volunteersByRole.hallHelp.add(cleanName);
+                                    stats.volunteersByRole.hallHelp.add(fullName);
+                                    if (!stats.volunteerCountsByRole.hallHelp[fullName]) {
+                                        stats.volunteerCountsByRole.hallHelp[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.hallHelp[fullName]++;
                                 } else if (roleId === 'drinks') {
-                                    stats.volunteersByRole.drinks.add(cleanName);
+                                    stats.volunteersByRole.drinks.add(fullName);
+                                    if (!stats.volunteerCountsByRole.drinks[fullName]) {
+                                        stats.volunteerCountsByRole.drinks[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.drinks[fullName]++;
                                 } else if (roleId === 'dishes') {
-                                    stats.volunteersByRole.dishes.add(cleanName);
+                                    stats.volunteersByRole.dishes.add(fullName);
+                                    if (!stats.volunteerCountsByRole.dishes[fullName]) {
+                                        stats.volunteerCountsByRole.dishes[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.dishes[fullName]++;
                                 } else if (roleId === 'laundry') {
-                                    stats.volunteersByRole.laundry.add(cleanName);
+                                    stats.volunteersByRole.laundry.add(fullName);
+                                    if (!stats.volunteerCountsByRole.laundry[fullName]) {
+                                        stats.volunteerCountsByRole.laundry[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.laundry[fullName]++;
                                 }
                             });
                         }
@@ -967,6 +997,25 @@
                 stats.topVolunteers = Object.entries(stats.volunteerCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 10);
+                
+                // Create top 10 for each role
+                stats.topByRole = {
+                    managers: Object.entries(stats.volunteerCountsByRole.managers)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    hallHelp: Object.entries(stats.volunteerCountsByRole.hallHelp)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    drinks: Object.entries(stats.volunteerCountsByRole.drinks)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    dishes: Object.entries(stats.volunteerCountsByRole.dishes)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    laundry: Object.entries(stats.volunteerCountsByRole.laundry)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10)
+                };
                 
                 return stats;
             },
@@ -1376,14 +1425,68 @@
                                     </div>
 
                                     <div class="mb-6">
-                                        <h3 class="text-xl font-bold mb-3">Top 10 Volunteers</h3>
-                                        <div class="space-y-2">
-                                            ${stats.topVolunteers.map(([name, count], i) => `
-                                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                                    <span><strong>#${i+1}</strong> ${name}</span>
-                                                    <span class="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold">${count} shifts</span>
+                                        <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="p-4 bg-blue-50 rounded-lg">
+                                                <h4 class="font-bold text-blue-900 mb-3">👔 Top Meal Managers</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.managers.length > 0 ? stats.topByRole.managers.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
                                                 </div>
-                                            `).join('')}
+                                            </div>
+
+                                            <div class="p-4 bg-green-50 rounded-lg">
+                                                <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-purple-50 rounded-lg">
+                                                <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks Trolley</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-yellow-50 rounded-lg">
+                                                <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-pink-50 rounded-lg">
+                                                <h4 class="font-bold text-pink-900 mb-3">🧺 Top Laundry</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.laundry.length > 0 ? stats.topByRole.laundry.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-pink-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 

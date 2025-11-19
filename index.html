@@ -143,6 +143,8 @@
             selectedSlot: null,
             volunteerName: '',
             signups: {},
+            specialEvents: [],
+            editingEvent: null,
             connectionStatus: 'checking',
             lastSaveTime: null,
             backupCount: 5,
@@ -190,6 +192,12 @@
             },
 
             getVisibleRoles(view) {
+                // Check if it's a special event
+                const event = this.specialEvents.find(e => e.id === view);
+                if (event) {
+                    return event.roles;
+                }
+                
                 const allRoles = this.roles[view] || [];
                 return allRoles.filter(role => {
                     if (role.id !== 'giveaway') return true;
@@ -207,10 +215,27 @@
                 return this.giveawayDates[key] === true;
             },
 
-            toggleGiveaway(view, dateStr) {
+            async toggleGiveaway(view, dateStr) {
                 const key = `${view}-${dateStr}`;
                 this.giveawayDates[key] = !this.giveawayDates[key];
+                
+                // Save to localStorage as backup
                 localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+                
+                // Sync to Supabase for real-time
+                if (!useLocalStorage && supabase) {
+                    try {
+                        await supabase.from('roster_settings').upsert({
+                            setting_type: 'giveaway',
+                            setting_key: key,
+                            setting_value: this.giveawayDates[key] ? 'true' : 'false',
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'setting_type,setting_key' });
+                    } catch (e) {
+                        console.error('Error syncing giveaway toggle:', e);
+                    }
+                }
+                
                 this.showNotification(this.giveawayDates[key] ? 'Giveaway table enabled' : 'Giveaway table disabled');
                 this.render();
             },
@@ -429,15 +454,30 @@
                 await this.checkConnection();
                 await this.loadHistoricalData();
                 await this.loadSignups();
+                await this.loadSpecialEvents();
+                await this.loadSettings();
                 
                 this.isLoading = false;
                 this.isInitialized = true;
                 this.render();
 
                 if (!useLocalStorage && supabase) {
+                    // Subscribe to volunteer signups changes
                     supabase.channel('signups').on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'volunteer_signups' }, 
                         () => this.loadSignups()
+                    ).subscribe();
+                    
+                    // Subscribe to special events changes
+                    supabase.channel('special-events').on('postgres_changes',
+                        { event: '*', schema: 'public', table: 'special_events' },
+                        () => this.loadSpecialEvents()
+                    ).subscribe();
+                    
+                    // Subscribe to settings changes (notes, giveaways)
+                    supabase.channel('settings').on('postgres_changes',
+                        { event: '*', schema: 'public', table: 'roster_settings' },
+                        () => this.loadSettings()
                     ).subscribe();
                 }
 
@@ -603,6 +643,14 @@
                             this.giveawayDates = {};
                         }
                     }
+                    const savedEvents = localStorage.getItem('uts-special-events');
+                    if (savedEvents) {
+                        try {
+                            this.specialEvents = JSON.parse(savedEvents);
+                        } catch (e) {
+                            this.specialEvents = [];
+                        }
+                    }
                 } else {
                     let retries = 3;
                     while (retries > 0) {
@@ -653,20 +701,254 @@
                             this.giveawayDates = {};
                         }
                     }
+                    const savedEvents = localStorage.getItem('uts-special-events');
+                    if (savedEvents) {
+                        try {
+                            this.specialEvents = JSON.parse(savedEvents);
+                        } catch (e) {
+                            this.specialEvents = [];
+                        }
+                    }
                 }
                 if (this.isInitialized) {
                     this.render();
                 }
             },
 
-            saveNote(view, dateStr, note) {
+            async loadSpecialEvents() {
+                if (useLocalStorage) {
+                    const savedEvents = localStorage.getItem('uts-special-events');
+                    if (savedEvents) {
+                        try {
+                            this.specialEvents = JSON.parse(savedEvents);
+                        } catch (e) {
+                            console.error('Error parsing special events:', e);
+                            this.specialEvents = [];
+                        }
+                    }
+                } else {
+                    try {
+                        const { data, error } = await supabase.from('special_events').select('*');
+                        if (error) throw error;
+                        
+                        this.specialEvents = (data || []).map(e => ({
+                            id: e.id,
+                            name: e.name,
+                            dates: e.dates,
+                            roles: e.roles,
+                            visible: e.visible,
+                            created: e.created_at
+                        }));
+                        
+                        // Backup to localStorage
+                        localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
+                    } catch (e) {
+                        console.error('Error loading special events from Supabase:', e);
+                        // Fallback to localStorage
+                        const savedEvents = localStorage.getItem('uts-special-events');
+                        if (savedEvents) {
+                            try {
+                                this.specialEvents = JSON.parse(savedEvents);
+                            } catch (e2) {
+                                this.specialEvents = [];
+                            }
+                        }
+                    }
+                }
+                if (this.isInitialized) {
+                    this.render();
+                }
+            },
+
+            async loadSettings() {
+                if (useLocalStorage) {
+                    const savedNotes = localStorage.getItem('uts-date-notes');
+                    if (savedNotes) {
+                        try {
+                            this.dateNotes = JSON.parse(savedNotes);
+                        } catch (e) {
+                            this.dateNotes = {};
+                        }
+                    }
+                    const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+                    if (savedGiveaway) {
+                        try {
+                            this.giveawayDates = JSON.parse(savedGiveaway);
+                        } catch (e) {
+                            this.giveawayDates = {};
+                        }
+                    }
+                } else {
+                    try {
+                        const { data, error } = await supabase.from('roster_settings').select('*');
+                        if (error) throw error;
+                        
+                        this.dateNotes = {};
+                        this.giveawayDates = {};
+                        
+                        data.forEach(setting => {
+                            if (setting.setting_type === 'note') {
+                                this.dateNotes[setting.setting_key] = setting.setting_value;
+                            } else if (setting.setting_type === 'giveaway') {
+                                this.giveawayDates[setting.setting_key] = setting.setting_value === 'true';
+                            }
+                        });
+                        
+                        // Backup to localStorage
+                        localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+                        localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+                    } catch (e) {
+                        console.error('Error loading settings from Supabase:', e);
+                        // Fallback to localStorage
+                        const savedNotes = localStorage.getItem('uts-date-notes');
+                        if (savedNotes) {
+                            try {
+                                this.dateNotes = JSON.parse(savedNotes);
+                            } catch (e2) {
+                                this.dateNotes = {};
+                            }
+                        }
+                        const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+                        if (savedGiveaway) {
+                            try {
+                                this.giveawayDates = JSON.parse(savedGiveaway);
+                            } catch (e2) {
+                                this.giveawayDates = {};
+                            }
+                        }
+                    }
+                }
+                if (this.isInitialized) {
+                    this.render();
+                }
+            },
+
+            async saveSpecialEvents() {
+                // Always save to localStorage as backup
+                localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
+                
+                if (!useLocalStorage && supabase) {
+                    try {
+                        // Sync to Supabase for real-time across devices
+                        // Delete all existing events and re-insert (simpler than diff)
+                        await supabase.from('special_events').delete().neq('id', '');
+                        
+                        if (this.specialEvents.length > 0) {
+                            const eventsToInsert = this.specialEvents.map(e => ({
+                                id: e.id,
+                                name: e.name,
+                                dates: e.dates,
+                                roles: e.roles,
+                                visible: e.visible,
+                                created_at: e.created,
+                                updated_at: new Date().toISOString()
+                            }));
+                            
+                            const { error } = await supabase.from('special_events').insert(eventsToInsert);
+                            if (error) throw error;
+                        }
+                        console.log('✓ Special events synced to Supabase');
+                    } catch (e) {
+                        console.error('Error syncing special events:', e);
+                        this.showNotification('Saved locally (offline mode)', 'warning');
+                    }
+                }
+                
+                this.createBackup();
+            },
+
+            async createSpecialEvent(name, dates, roles, visible = true) {
+                const event = {
+                    id: Date.now().toString(),
+                    name: name.trim(),
+                    dates: dates,
+                    roles: roles,
+                    visible: visible,
+                    created: new Date().toISOString()
+                };
+                this.specialEvents.push(event);
+                
+                // Initialize signups structure for this event
+                this.signups[event.id] = {};
+                dates.forEach(dateStr => {
+                    this.signups[event.id][dateStr] = {};
+                    roles.forEach(role => {
+                        this.signups[event.id][dateStr][role.id] = [];
+                    });
+                });
+                
+                await this.saveSpecialEvents();
+                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                this.showNotification(`Event "${name}" created!`);
+                return event.id;
+            },
+
+            async updateSpecialEvent(eventId, updates) {
+                const eventIndex = this.specialEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return;
+                
+                this.specialEvents[eventIndex] = { ...this.specialEvents[eventIndex], ...updates };
+                await this.saveSpecialEvents();
+                this.showNotification('Event updated!');
+            },
+
+            async deleteSpecialEvent(eventId) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                if (!confirm(`Delete event "${event.name}"? This will remove all volunteer signups for this event.`)) return;
+                
+                // Remove from events array
+                this.specialEvents = this.specialEvents.filter(e => e.id !== eventId);
+                
+                // Remove signups
+                delete this.signups[eventId];
+                
+                await this.saveSpecialEvents();
+                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                this.showNotification('Event deleted');
+            },
+
+            async toggleEventVisibility(eventId) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                event.visible = !event.visible;
+                await this.saveSpecialEvents();
+                this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
+            },
+
+            async saveNote(view, dateStr, note) {
                 const key = `${view}-${dateStr}`;
                 if (note.trim()) {
                     this.dateNotes[key] = note.trim();
                 } else {
                     delete this.dateNotes[key];
                 }
+                
+                // Save to localStorage as backup
                 localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+                
+                // Sync to Supabase for real-time
+                if (!useLocalStorage && supabase) {
+                    try {
+                        if (note.trim()) {
+                            await supabase.from('roster_settings').upsert({
+                                setting_type: 'note',
+                                setting_key: key,
+                                setting_value: note.trim(),
+                                updated_at: new Date().toISOString()
+                            }, { onConflict: 'setting_type,setting_key' });
+                        } else {
+                            await supabase.from('roster_settings').delete()
+                                .eq('setting_type', 'note')
+                                .eq('setting_key', key);
+                        }
+                    } catch (e) {
+                        console.error('Error syncing note:', e);
+                    }
+                }
+                
                 this.showNotification('Note saved');
             },
 
@@ -678,6 +960,7 @@
             async addSignup() {
                 if (!this.volunteerName.trim()) return alert('Please enter your name');
                 const { view, dateStr, roleId } = this.selectedSlot;
+                console.log('Adding signup:', { view, dateStr, roleId, name: this.volunteerName.trim() });
                 const originalSignups = JSON.parse(JSON.stringify(this.signups));
 
                 if (useLocalStorage) {
@@ -690,9 +973,12 @@
                             throw new Error('Data validation failed');
                         }
                         localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                        console.log('Saved to localStorage successfully');
+                        console.log('Current signups for this date:', this.signups[view][dateStr]);
                         this.createBackup();
                         this.showNotification('✓ Signed up successfully!');
                     } catch (e) {
+                        console.error('Error during signup:', e);
                         this.signups = originalSignups;
                         this.showNotification('Error signing up: ' + e.message, 'error');
                         return;
@@ -1196,6 +1482,13 @@
                                     <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
                                     <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
                                     <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
+                                    
+                                    ${this.specialEvents.filter(e => e.visible).map(event => `
+                                        <button onclick="app.currentView='${event.id}'; app.render();" 
+                                                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
+                                            ${event.name} →
+                                        </button>
+                                    `).join('')}
                                 </div>
                             </div>
                         </div>
@@ -1204,12 +1497,28 @@
             },
 
             renderRoster() {
+                // Check if viewing a special event
+                const specialEvent = this.specialEvents.find(e => e.id === this.currentView);
+                const isSpecialEvent = !!specialEvent;
+                
                 const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
-                const dates = this.getDatesForPeriod();
+                const dates = isSpecialEvent ? this.getDatesForView(this.currentView) : this.getDatesForPeriod();
                 const roles = this.getVisibleRoles(this.currentView);
                 const stats = this.getRosterStats();
                 const nextShiftStats = this.getNextShiftStats();
                 const nextShiftDate = this.getNextUpcomingDate();
+
+                console.log('Rendering roster:', {
+                    view: this.currentView,
+                    period: this.selectedPeriod,
+                    dateCount: dates.length,
+                    firstDate: dates[0]?.date,
+                    lastDate: dates[dates.length-1]?.date
+                });
+
+                const viewTitle = isSpecialEvent ? specialEvent.name :
+                                 this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
+                                 this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 'Additional Weekly Tasks';
 
                 return `
                     <div class="min-h-screen p-2 md:p-4 print-full-width">
@@ -1227,11 +1536,8 @@
                             <div class="bg-white rounded-lg shadow-xl p-4 md:p-6 mb-6 no-print">
                                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                                     <div>
-                                        <h1 class="text-2xl md:text-3xl font-bold mb-1">
-                                            ${this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
-                                              this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 'Additional Weekly Tasks'}
-                                        </h1>
-                                        <p class="text-gray-600">${currentPeriod.label}</p>
+                                        <h1 class="text-2xl md:text-3xl font-bold mb-1">${viewTitle}</h1>
+                                        ${!isSpecialEvent ? `<p class="text-gray-600">${currentPeriod.label}</p>` : `<p class="text-gray-600">Special Event</p>`}
                                     </div>
                                     <div class="flex gap-2">
                                         <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
@@ -1264,17 +1570,19 @@
                                     </div>
                                 ` : ''}
 
-                                <div class="flex flex-col md:flex-row gap-2 mb-4">
-                                    <select onchange="app.selectedPeriod=this.value; app.render();" class="flex-1 p-2 border rounded-lg">
-                                        ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
-                                    </select>
-                                    ${this.currentView !== 'weekly-tasks' ? `
-                                        <button onclick="app.currentView='${this.currentView === 'thursday-hall' ? 'saturday-hall' : 'thursday-hall'}'; app.render();" 
-                                                class="px-4 py-2 ${this.currentView === 'thursday-hall' ? 'bg-orange-600' : 'bg-blue-600'} text-white rounded-lg hover:opacity-90">
-                                            Switch to ${this.currentView === 'thursday-hall' ? 'Saturday' : 'Thursday'}
-                                        </button>
-                                    ` : ''}
-                                </div>
+                                ${!isSpecialEvent ? `
+                                    <div class="flex flex-col md:flex-row gap-2 mb-4">
+                                        <select onchange="app.selectedPeriod=this.value; localStorage.setItem('uts-selected-period', this.value); app.render();" class="flex-1 p-2 border rounded-lg">
+                                            ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                                        </select>
+                                        ${this.currentView !== 'weekly-tasks' ? `
+                                            <button onclick="app.currentView='${this.currentView === 'thursday-hall' ? 'saturday-hall' : 'thursday-hall'}'; app.render();" 
+                                                    class="px-4 py-2 ${this.currentView === 'thursday-hall' ? 'bg-orange-600' : 'bg-blue-600'} text-white rounded-lg hover:opacity-90">
+                                                Switch to ${this.currentView === 'thursday-hall' ? 'Saturday' : 'Thursday'}
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
                             </div>
 
                             <div class="table-container bg-white rounded-lg shadow-xl overflow-hidden">
@@ -1403,18 +1711,25 @@
             },
 
             renderAdminRoster(view) {
+                // Check if viewing a special event
+                const specialEvent = this.specialEvents.find(e => e.id === view);
+                const isSpecialEvent = !!specialEvent;
+                
                 const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
                 const dates = this.getDatesForView(view);
                 const roles = this.getVisibleRoles(view);
-                const viewName = view === 'thursday-hall' ? 'Thursday Hall' : 
+                const viewName = isSpecialEvent ? specialEvent.name :
+                                view === 'thursday-hall' ? 'Thursday Hall' : 
                                 view === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
 
                 return `
                     <div class="mb-4">
                         <h3 class="text-xl font-bold mb-3">${viewName}</h3>
-                        <select onchange="app.selectedPeriod=this.value; app.render();" class="w-full md:w-auto p-2 border rounded-lg mb-4">
-                            ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
-                        </select>
+                        ${!isSpecialEvent ? `
+                            <select onchange="app.selectedPeriod=this.value; localStorage.setItem('uts-selected-period', this.value); app.render();" class="w-full md:w-auto p-2 border rounded-lg mb-4">
+                                ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                            </select>
+                        ` : ''}
                     </div>
                     
                     <div class="overflow-x-auto -mx-6 px-6" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
@@ -1429,7 +1744,7 @@
                                         </th>
                                     `).join('')}
                                     <th class="p-2 text-left text-sm font-semibold border" style="min-width: 120px;">Notes</th>
-                                    ${view !== 'weekly-tasks' ? '<th class="p-2 text-center text-sm font-semibold border" style="min-width: 80px;">Giveaway</th>' : ''}
+                                    ${!isSpecialEvent && view !== 'weekly-tasks' ? '<th class="p-2 text-center text-sm font-semibold border" style="min-width: 80px;">Giveaway</th>' : ''}
                                 </tr>
                             </thead>
                             <tbody>
@@ -1496,7 +1811,7 @@
                                                    onchange="app.saveNote('${view}', '${d.date}', this.value)"
                                                    class="w-full p-1 text-xs border rounded" />
                                         </td>
-                                        ${view !== 'weekly-tasks' ? `
+                                        ${!isSpecialEvent && view !== 'weekly-tasks' ? `
                                             <td class="p-2 text-center border" style="min-width: 80px;">
                                                 <input type="checkbox" 
                                                        ${this.isGiveawayEnabled(view, d.date) ? 'checked' : ''}
@@ -1535,7 +1850,242 @@
                 `;
             },
 
+            renderSpecialEventsManager() {
+                const sortedEvents = [...this.specialEvents].sort((a, b) => {
+                    const aDate = new Date(Math.min(...a.dates.map(d => new Date(d.split('-').map(Number)).getTime())));
+                    const bDate = new Date(Math.min(...b.dates.map(d => new Date(d.split('-').map(Number)).getTime())));
+                    return aDate - bDate;
+                });
+
+                return `
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-2xl font-bold">Special Events</h3>
+                            <button onclick="app.editingEvent='new'; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
+                                ➕ Create New Event
+                            </button>
+                        </div>
+
+                        ${this.editingEvent === 'new' ? this.renderEventForm() : ''}
+
+                        ${sortedEvents.length === 0 ? `
+                            <div class="text-center py-12 text-gray-500">
+                                <p class="text-lg mb-2">No special events yet</p>
+                                <p class="text-sm">Create your first event to get started!</p>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                ${sortedEvents.map(event => {
+                                    const firstDate = event.dates[0];
+                                    const [year, month, day] = firstDate.split('-').map(Number);
+                                    const date = new Date(year, month - 1, day);
+                                    const isPast = date < new Date();
+                                    
+                                    return `
+                                        <div class="border rounded-lg p-4 ${isPast ? 'bg-gray-50' : 'bg-white'} ${event.visible ? 'border-indigo-300' : 'border-gray-300'}">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div class="flex-1">
+                                                    <h4 class="text-lg font-bold ${isPast ? 'text-gray-600' : 'text-gray-900'}">${event.name}</h4>
+                                                    <p class="text-sm text-gray-600">${event.dates.length} date${event.dates.length > 1 ? 's' : ''} • ${event.roles.length} role${event.roles.length > 1 ? 's' : ''}</p>
+                                                </div>
+                                                <div class="flex gap-1">
+                                                    <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
+                                                            class="p-2 ${event.visible ? 'text-green-600' : 'text-gray-400'} hover:bg-gray-100 rounded"
+                                                            title="${event.visible ? 'Visible on welcome screen' : 'Hidden from welcome screen'}">
+                                                        ${event.visible ? '👁️' : '👁️‍🗨️'}
+                                                    </button>
+                                                    <button onclick="app.adminView='event-${event.id}'; app.render();" 
+                                                            class="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Edit roster">
+                                                        📋
+                                                    </button>
+                                                    <button onclick="app.editingEvent='${event.id}'; app.render();" 
+                                                            class="p-2 text-indigo-600 hover:bg-indigo-50 rounded" title="Edit event">
+                                                        ✏️
+                                                    </button>
+                                                    <button onclick="app.deleteSpecialEvent('${event.id}'); app.render();" 
+                                                            class="p-2 text-red-600 hover:bg-red-50 rounded" title="Delete event">
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-3 space-y-1 text-sm">
+                                                <div><strong>Dates:</strong> ${event.dates.slice(0, 3).join(', ')}${event.dates.length > 3 ? '...' : ''}</div>
+                                                <div><strong>Roles:</strong> ${event.roles.map(r => r.name).join(', ')}</div>
+                                            </div>
+
+                                            ${this.editingEvent === event.id ? `
+                                                <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                                                    ${this.renderEventForm(event)}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
+            },
+
+            renderEventForm(event = null) {
+                const isNew = !event;
+                const formId = isNew ? 'new' : event.id;
+                
+                return `
+                    <div class="bg-white border-2 border-indigo-200 rounded-lg p-6 mt-4" id="eventForm-${formId}">
+                        <h4 class="text-lg font-bold mb-4">${isNew ? 'Create New Event' : 'Edit Event'}</h4>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Event Name *</label>
+                                <input type="text" id="eventName-${formId}" value="${event?.name || ''}" 
+                                       placeholder="e.g., Christmas Dinner" 
+                                       class="w-full p-2 border rounded-lg" />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Event Date(s) *</label>
+                                <div id="eventDates-${formId}" class="space-y-2">
+                                    ${event?.dates.map((d, i) => `
+                                        <div class="flex gap-2">
+                                            <input type="date" value="${d}" class="flex-1 p-2 border rounded-lg event-date" />
+                                            ${event.dates.length > 1 ? `
+                                                <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">✕</button>
+                                            ` : ''}
+                                        </div>
+                                    `).join('') || `
+                                        <div class="flex gap-2">
+                                            <input type="date" class="flex-1 p-2 border rounded-lg event-date" />
+                                        </div>
+                                    `}
+                                </div>
+                                <button onclick="document.getElementById('eventDates-${formId}').insertAdjacentHTML('beforeend', '<div class=\\'flex gap-2\\'><input type=\\'date\\' class=\\'flex-1 p-2 border rounded-lg event-date\\' /><button onclick=\\'this.parentElement.remove();\\' class=\\'px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600\\'>✕</button></div>');" 
+                                        class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">+ Add another date</button>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Roles *</label>
+                                <div class="mb-2 flex gap-2">
+                                    <button onclick="app.copyRolesTemplate('${formId}', 'thursday'); app.render();" class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                                        Copy from Thursday
+                                    </button>
+                                    <button onclick="app.copyRolesTemplate('${formId}', 'saturday'); app.render();" class="px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded hover:bg-orange-200">
+                                        Copy from Saturday
+                                    </button>
+                                </div>
+                                <div id="eventRoles-${formId}" class="space-y-2">
+                                    ${event?.roles.map((r, i) => `
+                                        <div class="flex gap-2 items-start p-2 bg-gray-50 rounded">
+                                            <div class="flex-1 space-y-1">
+                                                <input type="text" value="${r.name}" placeholder="Role name" 
+                                                       class="w-full p-1 border rounded text-sm role-name" />
+                                                <input type="text" value="${r.time}" placeholder="Time (e.g., 10:00am-2:00pm)" 
+                                                       class="w-full p-1 border rounded text-sm role-time" />
+                                                <input type="number" value="${r.capacity}" placeholder="Capacity" min="1" 
+                                                       class="w-20 p-1 border rounded text-sm role-capacity" />
+                                            </div>
+                                            <button onclick="this.parentElement.remove();" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">✕</button>
+                                        </div>
+                                    `).join('') || ''}
+                                </div>
+                                <button onclick="document.getElementById('eventRoles-${formId}').insertAdjacentHTML('beforeend', '<div class=\\'flex gap-2 items-start p-2 bg-gray-50 rounded\\'><div class=\\'flex-1 space-y-1\\'><input type=\\'text\\' placeholder=\\'Role name\\' class=\\'w-full p-1 border rounded text-sm role-name\\' /><input type=\\'text\\' placeholder=\\'Time (e.g., 10:00am-2:00pm)\\' class=\\'w-full p-1 border rounded text-sm role-time\\' /><input type=\\'number\\' placeholder=\\'Capacity\\' min=\\'1\\' class=\\'w-20 p-1 border rounded text-sm role-capacity\\' /></div><button onclick=\\'this.parentElement.remove();\\' class=\\'px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm\\'>✕</button></div>');" 
+                                        class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">+ Add role</button>
+                            </div>
+
+                            <div class="flex gap-2 pt-4">
+                                <button onclick="app.saveEventForm('${formId}');" 
+                                        class="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700">
+                                    ${isNew ? 'Create Event' : 'Save Changes'}
+                                </button>
+                                <button onclick="app.editingEvent=null; app.render();" 
+                                        class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-400">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            copyRolesTemplate(formId, template) {
+                const roles = template === 'thursday' ? this.roles['thursday-hall'] : this.roles['saturday-hall'];
+                const rolesHtml = roles.filter(r => r.id !== 'giveaway').map(r => `
+                    <div class="flex gap-2 items-start p-2 bg-gray-50 rounded">
+                        <div class="flex-1 space-y-1">
+                            <input type="text" value="${r.name}" placeholder="Role name" 
+                                   class="w-full p-1 border rounded text-sm role-name" />
+                            <input type="text" value="${r.time}" placeholder="Time" 
+                                   class="w-full p-1 border rounded text-sm role-time" />
+                            <input type="number" value="${r.capacity}" placeholder="Capacity" min="1" 
+                                   class="w-20 p-1 border rounded text-sm role-capacity" />
+                        </div>
+                        <button onclick="this.parentElement.remove();" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">✕</button>
+                    </div>
+                `).join('');
+                
+                document.getElementById(`eventRoles-${formId}`).innerHTML = rolesHtml;
+            },
+
+            saveEventForm(formId) {
+                const name = document.getElementById(`eventName-${formId}`).value.trim();
+                if (!name) {
+                    alert('Please enter an event name');
+                    return;
+                }
+
+                const dateInputs = document.querySelectorAll(`#eventDates-${formId} .event-date`);
+                const dates = Array.from(dateInputs).map(input => input.value).filter(d => d);
+                if (dates.length === 0) {
+                    alert('Please add at least one date');
+                    return;
+                }
+
+                const roleElements = document.querySelectorAll(`#eventRoles-${formId} > div`);
+                const roles = Array.from(roleElements).map((el, i) => {
+                    const roleName = el.querySelector('.role-name').value.trim();
+                    const roleTime = el.querySelector('.role-time').value.trim();
+                    const roleCapacity = parseInt(el.querySelector('.role-capacity').value) || 1;
+                    
+                    if (!roleName) return null;
+                    
+                    return {
+                        id: `role-${i}`,
+                        name: roleName,
+                        time: roleTime,
+                        capacity: roleCapacity
+                    };
+                }).filter(r => r !== null);
+
+                if (roles.length === 0) {
+                    alert('Please add at least one role');
+                    return;
+                }
+
+                if (formId === 'new') {
+                    this.createSpecialEvent(name, dates, roles);
+                } else {
+                    this.updateSpecialEvent(formId, { name, dates, roles });
+                }
+
+                this.editingEvent = null;
+                this.render();
+            },
+
             getDatesForView(view) {
+                // Check if it's a special event
+                const event = this.specialEvents.find(e => e.id === view);
+                if (event) {
+                    return event.dates.map(dateStr => {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        return {
+                            date: dateStr,
+                            label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                        };
+                    });
+                }
+                
                 // Save current view temporarily
                 const savedView = this.currentView;
                 this.currentView = view;
@@ -1559,6 +2109,7 @@
                                 <div class="flex gap-2 mb-6 flex-wrap">
                                     <button onclick="app.adminView='dashboard'; app.render();" class="px-4 py-2 ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Dashboard</button>
                                     <button onclick="app.adminView='volunteers'; app.render();" class="px-4 py-2 ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Volunteers by Role</button>
+                                    <button onclick="app.adminView='special-events'; app.render();" class="px-4 py-2 ${this.adminView === 'special-events' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Special Events</button>
                                     <button onclick="app.adminView='thursday-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'thursday-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Thursday Roster</button>
                                     <button onclick="app.adminView='saturday-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'saturday-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Saturday Roster</button>
                                     <button onclick="app.adminView='weekly-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'weekly-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Additional Tasks</button>
@@ -1663,6 +2214,7 @@
                                     </div>
                                 ` : this.adminView === 'volunteers' ? `
                                     <div class="space-y-6">
+                                    <div class="space-y-6">
                                         <div class="p-4 bg-blue-50 rounded-lg">
                                             <h3 class="text-lg font-bold text-blue-900 mb-3">👔 Managers (${stats.volunteersByRole.managers.size})</h3>
                                             <div class="text-sm text-blue-800">
@@ -1698,7 +2250,11 @@
                                             </div>
                                         </div>
                                     </div>
-                                ` : this.adminView === 'thursday-roster' ? 
+                                ` : this.adminView === 'special-events' ?
+                                    this.renderSpecialEventsManager() :
+                                  this.adminView.startsWith('event-') ?
+                                    this.renderAdminRoster(this.adminView.replace('event-', '')) :
+                                  this.adminView === 'thursday-roster' ? 
                                     this.renderAdminRoster('thursday-hall') :
                                   this.adminView === 'saturday-roster' ? 
                                     this.renderAdminRoster('saturday-hall') :

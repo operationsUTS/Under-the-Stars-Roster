@@ -655,13 +655,30 @@
                     let retries = 3;
                     while (retries > 0) {
                         try {
-                            const { data, error } = await supabase.from('volunteer_signups').select('*');
-                            if (error) throw error;
-                            console.log('📥 Loaded from Supabase:', data?.length, 'signups');
-                            console.log('Sample data:', data?.slice(0, 3));
+                            // Get ALL signups without row limit
+                            let allData = [];
+                            let from = 0;
+                            const pageSize = 1000;
+                            
+                            while (true) {
+                                const { data, error } = await supabase
+                                    .from('volunteer_signups')
+                                    .select('*')
+                                    .range(from, from + pageSize - 1);
+                                    
+                                if (error) throw error;
+                                if (!data || data.length === 0) break;
+                                
+                                allData = allData.concat(data);
+                                if (data.length < pageSize) break;
+                                from += pageSize;
+                            }
+                            
+                            console.log('📥 Loaded from Supabase:', allData.length, 'signups (ALL data)');
+                            console.log('Sample data:', allData.slice(0, 3));
                             
                             this.signups = {};
-                            data.forEach(s => {
+                            allData.forEach(s => {
                                 if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
                                 if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
                                 if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
@@ -672,6 +689,7 @@
                             });
                             
                             console.log('📦 Processed signups structure:', {
+                                totalSignups: allData.length,
                                 rosterTypes: Object.keys(this.signups),
                                 thursdayDates: Object.keys(this.signups['thursday-hall'] || {}),
                                 jul2026Sample: this.signups['thursday-hall']?.['2026-07-01']

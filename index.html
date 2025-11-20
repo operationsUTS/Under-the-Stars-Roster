@@ -817,6 +817,12 @@
                             }
                         }
                     }
+                    
+                    // Always load selected period from localStorage (not synced to Supabase)
+                    const savedPeriod = localStorage.getItem('uts-selected-period');
+                    if (savedPeriod) {
+                        this.selectedPeriod = savedPeriod;
+                    }
                 }
                 if (this.isInitialized) {
                     this.render();
@@ -994,7 +1000,9 @@
                                 volunteer_name: this.volunteerName.trim()
                             }).select();
                             if (error) throw error;
+                            console.log('✓ Saved to Supabase:', data);
                             await this.loadSignups();
+                            console.log('✓ Reloaded signups. Sample:', this.signups[view]?.[dateStr]?.[roleId]);
                             this.showNotification('✓ Signed up successfully!');
                             break;
                         } catch (e) {
@@ -1511,9 +1519,12 @@
                 console.log('Rendering roster:', {
                     view: this.currentView,
                     period: this.selectedPeriod,
+                    periodLabel: currentPeriod?.label,
                     dateCount: dates.length,
                     firstDate: dates[0]?.date,
-                    lastDate: dates[dates.length-1]?.date
+                    lastDate: dates[dates.length-1]?.date,
+                    signupsKeys: Object.keys(this.signups[this.currentView] || {}),
+                    sampleSignup: this.signups[this.currentView]?.['2026-04-01']
                 });
 
                 const viewTitle = isSpecialEvent ? specialEvent.name :

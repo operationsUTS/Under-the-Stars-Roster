@@ -657,6 +657,9 @@
                         try {
                             const { data, error } = await supabase.from('volunteer_signups').select('*');
                             if (error) throw error;
+                            console.log('📥 Loaded from Supabase:', data?.length, 'signups');
+                            console.log('Sample data:', data?.slice(0, 3));
+                            
                             this.signups = {};
                             data.forEach(s => {
                                 if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
@@ -667,6 +670,13 @@
                                     name: s.volunteer_name
                                 });
                             });
+                            
+                            console.log('📦 Processed signups structure:', {
+                                rosterTypes: Object.keys(this.signups),
+                                thursdayDates: Object.keys(this.signups['thursday-hall'] || {}),
+                                jul2026Sample: this.signups['thursday-hall']?.['2026-07-01']
+                            });
+                            
                             if (!this.validateData(this.signups)) {
                                 throw new Error('Loaded data failed validation');
                             }

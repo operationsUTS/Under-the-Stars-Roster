@@ -1187,20 +1187,6 @@ return {
 };
 },
 
-                const date = new Date(year, month - 1, day);
-                const dateLabel = date.toLocaleDateString('en-NZ', { 
-                    weekday: 'long', day: 'numeric', month: 'long'
-                });
-                
-                return { 
-                    totalSlots, 
-                    filledSlots, 
-                    coverage: Math.round((filledSlots / totalSlots) * 100),
-                    dateLabel,
-                    needsHelp: totalSlots - filledSlots
-                };
-            },
-
             getRosterStats() {
                 const dates = this.getDatesForPeriod();
                 const roles = this.getVisibleRoles(this.currentView);
@@ -1725,7 +1711,6 @@ return {
                                                     ${isNextShift ? '<div class="next-shift-badge">NEXT SHIFT</div>' : ''}
                                                     ${d.label}
                                                 </td>
-                                                ${roles.map(role => {
 ${roles.map(role => {
     // Check if giveaway is enabled for this specific date
     const isGiveawayRole = role.id === 'giveaway';

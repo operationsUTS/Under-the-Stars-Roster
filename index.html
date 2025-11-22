@@ -290,27 +290,6 @@ async toggleGiveaway(view, dateStr) {
     this.showNotification(newValue ? 'Giveaway table enabled' : 'Giveaway table disabled');
     this.render();
 },
-                
-                // Save to localStorage as backup
-                localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
-                
-                // Sync to Supabase for real-time
-                if (!useLocalStorage && supabase) {
-                    try {
-                        await supabase.from('roster_settings').upsert({
-                            setting_type: 'giveaway',
-                            setting_key: key,
-                            setting_value: this.giveawayDates[key] ? 'true' : 'false',
-                            updated_at: new Date().toISOString()
-                        }, { onConflict: 'setting_type,setting_key' });
-                    } catch (e) {
-                        console.error('Error syncing giveaway toggle:', e);
-                    }
-                }
-                
-                this.showNotification(this.giveawayDates[key] ? 'Giveaway table enabled' : 'Giveaway table disabled');
-                this.render();
-            },
 
            getNextUpcomingDate(view = null) {
     // Use current view if not specified
@@ -350,20 +329,6 @@ async toggleGiveaway(view, dateStr) {
     if (date.getTime() === today.getTime()) return 'date-today';
     return 'date-future';
 },
-            getDateClass(dateStr) {
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                // Parse date correctly: YYYY-MM-DD
-                const [year, month, day] = dateStr.split('-').map(Number);
-                const date = new Date(year, month - 1, day);
-                date.setHours(0,0,0,0);
-                const nextShift = this.getNextUpcomingDate();
-                
-                if (dateStr === nextShift) return 'date-next-shift';
-                if (date < today) return 'date-past';
-                if (date.getTime() === today.getTime()) return 'date-today';
-                return 'date-future';
-            },
 
             getCoverageClass(filled, total) {
                 const percentage = (filled / total) * 100;
@@ -1195,43 +1160,33 @@ async toggleGiveaway(view, dateStr) {
     const roles = this.getVisibleRoles(this.currentView);
     let totalSlots = 0;
     let filledSlots = 0;
+roles.forEach(role => {
+    // Skip giveaway if not enabled for this date
+    if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, nextDate)) {
+        return;
+    }
     
-    roles.forEach(role => {
-        // Skip giveaway if not enabled for this date - ADDED THIS CHECK
-        if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, nextDate)) {
-            return;
-        }
-        
-        const signups = this.getSignups(this.currentView, nextDate, role.id);
-        totalSlots += role.capacity;
-        filledSlots += Math.min(signups.length, role.capacity);
-    });
-                getRosterStats() {
-    const dates = this.getDatesForPeriod();
-    const roles = this.getVisibleRoles(this.currentView);
-    let totalSlots = 0;
-    let filledSlots = 0;
-    let needsHelp = 0;
-    
-    dates.forEach(d => {
-        roles.forEach(role => {
-            // Skip giveaway if not enabled for this date - ADDED THIS CHECK
-            if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, d.date)) {
-                return;
-            }
-            
-            const signups = this.getSignups(this.currentView, d.date, role.id);
-            totalSlots += role.capacity;
-            filledSlots += Math.min(signups.length, role.capacity);
-            if (signups.length < role.capacity) needsHelp++;
-        });
-    });
-    
-    return { totalSlots, filledSlots, needsHelp, coverage: Math.round((filledSlots / totalSlots) * 100) };
+    const signups = this.getSignups(this.currentView, nextDate, role.id);
+    totalSlots += role.capacity;
+    filledSlots += Math.min(signups.length, role.capacity);
+});
+
+// Parse the date string correctly (YYYY-MM-DD format)
+const [year, month, day] = nextDate.split('-').map(Number);
+const date = new Date(year, month - 1, day);
+const dateLabel = date.toLocaleDateString('en-NZ', { 
+    weekday: 'long', day: 'numeric', month: 'long'
+});
+
+return { 
+    totalSlots, 
+    filledSlots, 
+    coverage: Math.round((filledSlots / totalSlots) * 100),
+    dateLabel,
+    needsHelp: totalSlots - filledSlots
+};
 },
-                
-                // Parse the date string correctly (YYYY-MM-DD format)
-                const [year, month, day] = nextDate.split('-').map(Number);
+
                 const date = new Date(year, month - 1, day);
                 const dateLabel = date.toLocaleDateString('en-NZ', { 
                     weekday: 'long', day: 'numeric', month: 'long'
@@ -1771,6 +1726,7 @@ async toggleGiveaway(view, dateStr) {
                                                     ${d.label}
                                                 </td>
                                                 ${roles.map(role => {
+${roles.map(role => {
     // Check if giveaway is enabled for this specific date
     const isGiveawayRole = role.id === 'giveaway';
     const giveawayEnabled = this.isGiveawayEnabled(this.currentView, d.date);
@@ -1784,12 +1740,8 @@ async toggleGiveaway(view, dateStr) {
         `;
     }
     
-    const signups = this.getSignups(this.currentView, d.date, role.id); === 'giveaway' && !this.isGiveawayEnabled(this.currentView, d.date)) {
-                                                        return '';
-                                                    }
-                                                    
-                                                    const signups = this.getSignups(this.currentView, d.date, role.id);
-                                                    const slotsLeft = role.capacity - signups.length;
+    const signups = this.getSignups(this.currentView, d.date, role.id);
+    const slotsLeft = role.capacity - signups.length;
                                                     return `
                                                     <td class="p-2 md:p-3 text-xs md:text-sm role-cell">
                                                         ${signups.map(signup => {

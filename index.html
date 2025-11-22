@@ -13,16 +13,42 @@
         }
         
         .table-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        @media (max-width: 768px) {
-            .role-cell {
-                min-width: 160px;
-            }
-        }
-        
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+/* Better mobile scrolling */
+@media (max-width: 768px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        /* Add scroll shadow indicator */
+        background: 
+            linear-gradient(to right, white 30%, rgba(255,255,255,0)),
+            linear-gradient(to right, rgba(255,255,255,0), white 70%) 0 100%,
+            radial-gradient(farthest-side at 0% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)),
+            radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)) 0 100%;
+        background-repeat: no-repeat;
+        background-color: white;
+        background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+        background-attachment: local, local, scroll, scroll;
+    }
+    
+    .role-cell {
+        min-width: 180px;
+    }
+    
+    table {
+        min-width: 100%;
+    }
+}
+ .giveaway-disabled {
+    background-color: #f9fafb;
+    color: #9ca3af;
+    font-style: italic;
+    text-align: center;
+}       
         .progress-bar {
             height: 4px;
             background: #e5e7eb;
@@ -215,9 +241,55 @@
                 return this.giveawayDates[key] === true;
             },
 
-            async toggleGiveaway(view, dateStr) {
-                const key = `${view}-${dateStr}`;
-                this.giveawayDates[key] = !this.giveawayDates[key];
+async toggleGiveaway(view, dateStr) {
+    const key = `${view}-${dateStr}`;
+    const newValue = !this.giveawayDates[key];
+    this.giveawayDates[key] = newValue;
+    
+    // If disabling giveaway, remove any existing signups for that date
+    if (!newValue) {
+        if (this.signups[view] && this.signups[view][dateStr] && this.signups[view][dateStr]['giveaway']) {
+            const giveawaySignups = this.signups[view][dateStr]['giveaway'];
+            
+            // Remove from database if using Supabase
+            if (!useLocalStorage && supabase && giveawaySignups.length > 0) {
+                for (let signup of giveawaySignups) {
+                    if (signup.id) {
+                        await supabase.from('volunteer_signups').delete().eq('id', signup.id);
+                    }
+                }
+            }
+            
+            // Clear from local data
+            this.signups[view][dateStr]['giveaway'] = [];
+        }
+    }
+    
+    // Save to localStorage as backup
+    localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+    
+    // Sync to Supabase for real-time
+    if (!useLocalStorage && supabase) {
+        try {
+            await supabase.from('roster_settings').upsert({
+                setting_type: 'giveaway',
+                setting_key: key,
+                setting_value: newValue ? 'true' : 'false',
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'setting_type,setting_key' });
+        } catch (e) {
+            console.error('Error syncing giveaway toggle:', e);
+        }
+    }
+    
+    // Save signups changes
+    if (useLocalStorage) {
+        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+    }
+    
+    this.showNotification(newValue ? 'Giveaway table enabled' : 'Giveaway table disabled');
+    this.render();
+},
                 
                 // Save to localStorage as backup
                 localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
@@ -240,23 +312,44 @@
                 this.render();
             },
 
-            getNextUpcomingDate() {
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const dates = this.getDatesForPeriod();
-                
-                for (let d of dates) {
-                    // Parse date correctly: YYYY-MM-DD
-                    const [year, month, day] = d.date.split('-').map(Number);
-                    const date = new Date(year, month - 1, day);
-                    date.setHours(0,0,0,0);
-                    if (date >= today) {
-                        return d.date;
-                    }
-                }
-                return null;
-            },
-
+           getNextUpcomingDate(view = null) {
+    // Use current view if not specified
+    const targetView = view || this.currentView;
+    
+    // Don't show next shift for weekly tasks
+    if (targetView === 'weekly-tasks') {
+        return null;
+    }
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dates = this.getDatesForPeriod();
+    
+    for (let d of dates) {
+        // Parse date correctly: YYYY-MM-DD
+        const [year, month, day] = d.date.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        date.setHours(0,0,0,0);
+        if (date >= today) {
+            return d.date;
+        }
+    }
+    return null;
+},
+            getDateClass(dateStr) {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    // Parse date correctly: YYYY-MM-DD
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0,0,0,0);
+    const nextShift = this.getNextUpcomingDate(this.currentView); // CHANGED: added parameter
+    
+    if (dateStr === nextShift) return 'date-next-shift';
+    if (date < today) return 'date-past';
+    if (date.getTime() === today.getTime()) return 'date-today';
+    return 'date-future';
+},
             getDateClass(dateStr) {
                 const today = new Date();
                 today.setHours(0,0,0,0);
@@ -1093,21 +1186,49 @@
             },
 
             getNextShiftStats() {
-                // Don't show progress bar for weekly tasks
-                if (this.currentView === 'weekly-tasks') return null;
-                
-                const nextDate = this.getNextUpcomingDate();
-                if (!nextDate) return null;
-                
-                const roles = this.getVisibleRoles(this.currentView);
-                let totalSlots = 0;
-                let filledSlots = 0;
-                
-                roles.forEach(role => {
-                    const signups = this.getSignups(this.currentView, nextDate, role.id);
-                    totalSlots += role.capacity;
-                    filledSlots += Math.min(signups.length, role.capacity);
-                });
+    // Don't show progress bar for weekly tasks
+    if (this.currentView === 'weekly-tasks') return null;
+    
+    const nextDate = this.getNextUpcomingDate(this.currentView); // CHANGED: pass currentView
+    if (!nextDate) return null;
+    
+    const roles = this.getVisibleRoles(this.currentView);
+    let totalSlots = 0;
+    let filledSlots = 0;
+    
+    roles.forEach(role => {
+        // Skip giveaway if not enabled for this date - ADDED THIS CHECK
+        if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, nextDate)) {
+            return;
+        }
+        
+        const signups = this.getSignups(this.currentView, nextDate, role.id);
+        totalSlots += role.capacity;
+        filledSlots += Math.min(signups.length, role.capacity);
+    });
+                getRosterStats() {
+    const dates = this.getDatesForPeriod();
+    const roles = this.getVisibleRoles(this.currentView);
+    let totalSlots = 0;
+    let filledSlots = 0;
+    let needsHelp = 0;
+    
+    dates.forEach(d => {
+        roles.forEach(role => {
+            // Skip giveaway if not enabled for this date - ADDED THIS CHECK
+            if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, d.date)) {
+                return;
+            }
+            
+            const signups = this.getSignups(this.currentView, d.date, role.id);
+            totalSlots += role.capacity;
+            filledSlots += Math.min(signups.length, role.capacity);
+            if (signups.length < role.capacity) needsHelp++;
+        });
+    });
+    
+    return { totalSlots, filledSlots, needsHelp, coverage: Math.round((filledSlots / totalSlots) * 100) };
+},
                 
                 // Parse the date string correctly (YYYY-MM-DD format)
                 const [year, month, day] = nextDate.split('-').map(Number);
@@ -1650,8 +1771,20 @@
                                                     ${d.label}
                                                 </td>
                                                 ${roles.map(role => {
-                                                    // Skip giveaway role if not enabled for this date
-                                                    if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, d.date)) {
+    // Check if giveaway is enabled for this specific date
+    const isGiveawayRole = role.id === 'giveaway';
+    const giveawayEnabled = this.isGiveawayEnabled(this.currentView, d.date);
+    
+    // If it's a giveaway role and NOT enabled for this date, show disabled cell
+    if (isGiveawayRole && !giveawayEnabled) {
+        return `
+            <td class="p-2 md:p-3 text-xs md:text-sm role-cell giveaway-disabled">
+                Not available
+            </td>
+        `;
+    }
+    
+    const signups = this.getSignups(this.currentView, d.date, role.id); === 'giveaway' && !this.isGiveawayEnabled(this.currentView, d.date)) {
                                                         return '';
                                                     }
                                                     

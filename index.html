@@ -321,6 +321,7 @@ getNextUpcomingDate(view = null) {
     
     period.months.forEach(month => {
         const date = new Date(period.year, month - 1, 1);
+        date.setHours(12, 0, 0, 0);
         while (date.getMonth() === month - 1) {
             if (date.getDay() === targetDay) {
                 dates.push({

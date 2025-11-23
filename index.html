@@ -1117,103 +1117,111 @@ getDatesForPeriod() {
                 const key = `${view}-${dateStr}`;
                 return this.dateNotes[key] || '';
             },
+async addSignup() {
+    if (!this.volunteerName.trim()) return alert('Please enter your name');
+    const { view, dateStr, roleId } = this.selectedSlot;
+    
+    // Check capacity
+    const role = this.getVisibleRoles(view).find(r => r.id === roleId);
+    const currentSignups = this.getSignups(view, dateStr, roleId);
+    
+    if (currentSignups.length >= role.capacity) {
+        const override = confirm(`⚠️ This role is at full capacity (${role.capacity}/${role.capacity}).\n\nDo you want to add an extra volunteer anyway?`);
+        if (!override) {
+            return; // User cancelled
+        }
+    }
+    
+    console.log('Adding signup:', { view, dateStr, roleId, name: this.volunteerName.trim() });
+    const originalSignups = JSON.parse(JSON.stringify(this.signups));
 
-            async addSignup() {
-                if (!this.volunteerName.trim()) return alert('Please enter your name');
-                const { view, dateStr, roleId } = this.selectedSlot;
-                console.log('Adding signup:', { view, dateStr, roleId, name: this.volunteerName.trim() });
-                const originalSignups = JSON.parse(JSON.stringify(this.signups));
-
-                if (useLocalStorage) {
-                    try {
-                        if (!this.signups[view]) this.signups[view] = {};
-                        if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
-                        if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-                        this.signups[view][dateStr][roleId].push({ name: this.volunteerName.trim() });
-                        if (!this.validateData(this.signups)) {
-                            throw new Error('Data validation failed');
-                        }
-                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                        console.log('Saved to localStorage successfully');
-                        console.log('Current signups for this date:', this.signups[view][dateStr]);
-                        this.createBackup();
-                        this.showNotification('✓ Signed up successfully!');
-                    } catch (e) {
-                        console.error('Error during signup:', e);
-                        this.signups = originalSignups;
-                        this.showNotification('Error signing up: ' + e.message, 'error');
-                        return;
-                    }
-                } else {
-                    let retries = 3;
-                    while (retries > 0) {
-                        try {
-                            const { data, error } = await supabase.from('volunteer_signups').insert({
-                                roster_type: view,
-                                shift_date: dateStr,
-                                role_id: roleId,
-                                volunteer_name: this.volunteerName.trim()
-                            }).select();
-                            if (error) throw error;
-                            console.log('✓ Saved to Supabase:', data);
-                            await this.loadSignups();
-                            console.log('✓ Reloaded signups. Sample:', this.signups[view]?.[dateStr]?.[roleId]);
-                            this.showNotification('✓ Signed up successfully!');
-                            break;
-                        } catch (e) {
-                            retries--;
-                            if (retries === 0) {
-                                this.showNotification('Error signing up. Please try again.', 'error');
-                                return;
-                            }
-                            await new Promise(r => setTimeout(r, 1000));
-                        }
-                    }
+    if (useLocalStorage) {
+        try {
+            if (!this.signups[view]) this.signups[view] = {};
+            if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
+            if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+            this.signups[view][dateStr][roleId].push({ name: this.volunteerName.trim() });
+            if (!this.validateData(this.signups)) {
+                throw new Error('Data validation failed');
+            }
+            localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+            this.createBackup();
+            this.showNotification('✓ Signed up successfully!');
+        } catch (e) {
+            console.error('Error during signup:', e);
+            this.signups = originalSignups;
+            this.showNotification('Error signing up: ' + e.message, 'error');
+            return;
+        }
+    } else {
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                const { data, error } = await supabase.from('volunteer_signups').insert({
+                    roster_type: view,
+                    shift_date: dateStr,
+                    role_id: roleId,
+                    volunteer_name: this.volunteerName.trim()
+                }).select();
+                if (error) throw error;
+                await this.loadSignups();
+                this.showNotification('✓ Signed up successfully!');
+                break;
+            } catch (e) {
+                retries--;
+                if (retries === 0) {
+                    this.showNotification('Error signing up. Please try again.', 'error');
+                    return;
                 }
-                this.showModal = false;
-                this.volunteerName = '';
-                this.render();
-            },
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+    }
+    this.showModal = false;
+    this.volunteerName = '';
+    this.render();
+},
 
-            async removeSignup(view, dateStr, roleId, signup) {
-                if (!confirm(`Remove ${signup.name}?`)) return;
-                const originalSignups = JSON.parse(JSON.stringify(this.signups));
+async removeSignup(view, dateStr, roleId, signup) {
+    if (!confirm(`Remove ${signup.name}?`)) return;
+    const originalSignups = JSON.parse(JSON.stringify(this.signups));
 
-                if (useLocalStorage) {
-                    try {
-                        this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
-                        if (!this.validateData(this.signups)) {
-                            throw new Error('Data validation failed');
-                        }
-                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                        this.createBackup();
-                        this.showNotification('✓ Removed successfully');
-                    } catch (e) {
-                        this.signups = originalSignups;
-                        this.showNotification('Error removing: ' + e.message, 'error');
-                        return;
-                    }
-                } else {
-                    let retries = 3;
-                    while (retries > 0) {
-                        try {
-                            const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
-                            if (error) throw error;
-                            await this.loadSignups();
-                            this.showNotification('✓ Removed successfully');
-                            break;
-                        } catch (e) {
-                            retries--;
-                            if (retries === 0) {
-                                this.showNotification('Error removing. Please try again.', 'error');
-                                return;
-                            }
-                            await new Promise(r => setTimeout(r, 1000));
-                        }
-                    }
+    if (useLocalStorage) {
+        try {
+            this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
+            if (!this.validateData(this.signups)) {
+                throw new Error('Data validation failed');
+            }
+            localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+            this.createBackup();
+            this.showNotification('✓ Removed successfully');
+        } catch (e) {
+            this.signups = originalSignups;
+            this.showNotification('Error removing: ' + e.message, 'error');
+            return;
+        }
+    } else {
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
+                if (error) throw error;
+                await this.loadSignups();
+                this.showNotification('✓ Removed successfully');
+                break;
+            } catch (e) {
+                retries--;
+                if (retries === 0) {
+                    this.showNotification('Error removing. Please try again.', 'error');
+                    return;
                 }
-                this.render();
-            },
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+    }
+    this.render();
+},
+getSignups(view, dateStr, roleId) {
 
             getSignups(view, dateStr, roleId) {
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
@@ -1827,14 +1835,12 @@ ${roles.map(role => {
                                                                 </div>
                                                             `;
                                                         }).join('')}
-                                                        ${slotsLeft > 0 && (!this.editingSignup || this.editingSignup.view !== this.currentView || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id) ? 
-                                                            Array(slotsLeft).fill(0).map(() => `
-                                                                <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
-                                                                        class="w-full text-left px-2 py-1 mb-1 border-2 border-dashed border-gray-300 rounded hover:border-indigo-500 hover:bg-indigo-50 text-gray-500 text-xs">
-                                                                    + Add volunteer
-                                                                </button>
-                                                            `).join('') : ''
-                                                        }
+                                                   ${!this.editingSignup || this.editingSignup.view !== this.currentView || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id ? `
+    <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+            class="w-full text-left px-2 py-1 mb-1 border-2 border-dashed ${slotsLeft > 0 ? 'border-gray-300 hover:border-indigo-500' : 'border-orange-400 hover:border-orange-600 bg-orange-50'} rounded hover:bg-indigo-50 text-gray-500 text-xs">
+        ${slotsLeft > 0 ? '+ Add volunteer' : '+ Add extra volunteer (over capacity)'}
+    </button>
+` : ''}
                                                     </td>
                                                 `;
                                                 }).join('')}

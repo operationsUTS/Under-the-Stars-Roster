@@ -704,8 +704,6 @@ getDatesForPeriod() {
                 console.warn('✅ FOUND DATE:', dateStr, 'Day:', this.getDayOfWeek(dateStr), 'Target:', targetDay);
                 const date = new Date(period.year, month - 1, day);
                 dates.push({
-                    
-                    dates.push({
                         date: dateStr,
                         label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
                     });

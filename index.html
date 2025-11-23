@@ -701,8 +701,9 @@ getDatesForPeriod() {
                 if (testDate.getMonth() !== month - 1) break;
                 
                 if (this.getDayOfWeek(dateStr) === targetDay) {
-                    const wed = new Date(period.year, month - 1, day);
-                    const thurs = new Date(period.year, month - 1, day + 1);
+                console.warn('✅ FOUND DATE:', dateStr, 'Day:', this.getDayOfWeek(dateStr), 'Target:', targetDay);
+                const date = new Date(period.year, month - 1, day);
+                dates.push({
                     
                     dates.push({
                         date: dateStr,

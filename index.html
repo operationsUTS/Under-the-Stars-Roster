@@ -339,7 +339,7 @@ getNextUpcomingDate(view = null) {
         // Parse date correctly: YYYY-MM-DD
         const [year, month, day] = d.date.split('-').map(Number);
         const date = new Date(year, month - 1, day);
-        date.setHours(0,0,0,0);
+        date.setHours(12,0,0,0);
         if (date >= today) {
             console.warn('🔍 NEXT DATE FOUND:', d.date, '| Day:', date.getDay(), '| Formatted:', date.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }));
             return d.date;

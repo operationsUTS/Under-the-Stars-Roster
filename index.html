@@ -661,51 +661,78 @@ getNextUpcomingDate(view = null) {
                 }
             },
 
-           getDatesForPeriod() {
+// Helper function to get day of week from YYYY-MM-DD string (no Date objects!)
+getDayOfWeek(dateStr) {
+    // Zeller's congruence algorithm - works with just the date string!
+    const [year, month, day] = dateStr.split('-').map(Number);
+    
+    let m = month;
+    let y = year;
+    
+    // Adjust for January and February
+    if (m < 3) {
+        m += 12;
+        y--;
+    }
+    
+    const q = day;
+    const K = y % 100;
+    const J = Math.floor(y / 100);
+    
+    const h = (q + Math.floor((13 * (m + 1)) / 5) + K + Math.floor(K / 4) + Math.floor(J / 4) - (2 * J)) % 7;
+    
+    // Convert to JavaScript day (0=Sun, 1=Mon, ..., 6=Sat)
+    return (h + 6) % 7;
+},
+
+getDatesForPeriod() {
     const period = this.periods.find(p => p.id === this.selectedPeriod);
     if (!period) return [];
     const dates = [];
     
     if (this.currentView === 'weekly-tasks') {
+        const targetDay = 3; // Wednesday
         period.months.forEach(month => {
-            const date = new Date(period.year, month - 1, 1);
-            while (date.getMonth() === month - 1) {
-                if (date.getDay() === 3) {
-                    const wed = new Date(date);
-                    const thurs = new Date(date);
-                    thurs.setDate(thurs.getDate() + 1);
-                    
-                    // FIX: Format dates manually to avoid timezone issues
-                    const wedStr = `${wed.getFullYear()}-${String(wed.getMonth() + 1).padStart(2, '0')}-${String(wed.getDate()).padStart(2, '0')}`;
+            for (let day = 1; day <= 31; day++) {
+                const dateStr = `${period.year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                // Check if valid date
+                const testDate = new Date(period.year, month - 1, day);
+                if (testDate.getMonth() !== month - 1) break;
+                
+                if (this.getDayOfWeek(dateStr) === targetDay) {
+                    const wed = new Date(period.year, month - 1, day);
+                    const thurs = new Date(period.year, month - 1, day + 1);
                     
                     dates.push({
-                        date: wedStr,
+                        date: dateStr,
                         label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
                     });
                 }
-                date.setDate(date.getDate() + 1);
             }
         });
     } else {
         const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
         period.months.forEach(month => {
-            const date = new Date(period.year, month - 1, 1);
-            while (date.getMonth() === month - 1) {
-                if (date.getDay() === targetDay) {
-                    // FIX: Format date manually to avoid timezone issues
-                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                    
+            for (let day = 1; day <= 31; day++) {
+                const dateStr = `${period.year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                // Check if valid date
+                const testDate = new Date(period.year, month - 1, day);
+                if (testDate.getMonth() !== month - 1) break;
+                
+                if (this.getDayOfWeek(dateStr) === targetDay) {
+                    const date = new Date(period.year, month - 1, day);
                     dates.push({
                         date: dateStr,
                         label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
                     });
                 }
-                date.setDate(date.getDate() + 1);
             }
         });
     }
     return dates;
-           },
+},
 
             async loadSignups() {
                 if (useLocalStorage) {

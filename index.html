@@ -290,8 +290,7 @@ async toggleGiveaway(view, dateStr) {
     this.showNotification(newValue ? 'Giveaway table enabled' : 'Giveaway table disabled');
     this.render();
 },
-
-       getNextUpcomingDate(view = null) {
+getNextUpcomingDate(view = null) {
     console.warn('🎯 getNextUpcomingDate called with view:', view, '| currentView:', this.currentView);
     
     // Use current view if not specified

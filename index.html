@@ -329,12 +329,7 @@ async toggleGiveaway(view, dateStr) {
         const date = new Date(year, month - 1, day);
         date.setHours(0,0,0,0);
         if (date >= today) {
-            console.log('🔍 Found next date:', {
-    dateString: d.date,
-    parsedDate: new Date(year, month - 1, day),
-    dayOfWeek: new Date(year, month - 1, day).getDay(),
-    formattedDate: new Date(year, month - 1, day).toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' })
-});
+          console.warn('🔍 NEXT DATE FOUND:', d.date, '| Day of week:', new Date(year, month - 1, day).getDay(), '| Formatted:', new Date(year, month - 1, day).toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }));
             return d.date;
         }
     }

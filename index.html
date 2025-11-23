@@ -660,44 +660,51 @@ getNextUpcomingDate(view = null) {
                 }
             },
 
-            getDatesForPeriod() {
-                const period = this.periods.find(p => p.id === this.selectedPeriod);
-                if (!period) return [];
-                const dates = [];
-                
-                if (this.currentView === 'weekly-tasks') {
-                    period.months.forEach(month => {
-                        const date = new Date(period.year, month - 1, 1);
-                        while (date.getMonth() === month - 1) {
-                            if (date.getDay() === 3) {
-                                const wed = new Date(date);
-                                const thurs = new Date(date);
-                                thurs.setDate(thurs.getDate() + 1);
-                                dates.push({
-                                    date: wed.toISOString().split('T')[0],
-                                    label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
-                                });
-                            }
-                            date.setDate(date.getDate() + 1);
-                        }
-                    });
-                } else {
-                    const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
-                    period.months.forEach(month => {
-                        const date = new Date(period.year, month - 1, 1);
-                        while (date.getMonth() === month - 1) {
-                            if (date.getDay() === targetDay) {
-                                dates.push({
-                                    date: date.toISOString().split('T')[0],
-                                    label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
-                                });
-                            }
-                            date.setDate(date.getDate() + 1);
-                        }
+           getDatesForPeriod() {
+    const period = this.periods.find(p => p.id === this.selectedPeriod);
+    if (!period) return [];
+    const dates = [];
+    
+    if (this.currentView === 'weekly-tasks') {
+        period.months.forEach(month => {
+            const date = new Date(period.year, month - 1, 1);
+            while (date.getMonth() === month - 1) {
+                if (date.getDay() === 3) {
+                    const wed = new Date(date);
+                    const thurs = new Date(date);
+                    thurs.setDate(thurs.getDate() + 1);
+                    
+                    // FIX: Format dates manually to avoid timezone issues
+                    const wedStr = `${wed.getFullYear()}-${String(wed.getMonth() + 1).padStart(2, '0')}-${String(wed.getDate()).padStart(2, '0')}`;
+                    
+                    dates.push({
+                        date: wedStr,
+                        label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
                     });
                 }
-                return dates;
-            },
+                date.setDate(date.getDate() + 1);
+            }
+        });
+    } else {
+        const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
+        period.months.forEach(month => {
+            const date = new Date(period.year, month - 1, 1);
+            while (date.getMonth() === month - 1) {
+                if (date.getDay() === targetDay) {
+                    // FIX: Format date manually to avoid timezone issues
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    
+                    dates.push({
+                        date: dateStr,
+                        label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                    });
+                }
+                date.setDate(date.getDate() + 1);
+            }
+        });
+    }
+    return dates;
+}
 
             async loadSignups() {
                 if (useLocalStorage) {

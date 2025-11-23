@@ -11,36 +11,35 @@
             body { background: white !important; }
             .print-full-width { max-width: 100% !important; }
         }
-        
-        .table-container {
+  .table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     position: relative;
+    max-width: 100%;
 }
 
 /* Better mobile scrolling */
 @media (max-width: 768px) {
     .table-container {
-        overflow-x: auto;
+        overflow-x: scroll;
         -webkit-overflow-scrolling: touch;
-        /* Add scroll shadow indicator */
-        background: 
-            linear-gradient(to right, white 30%, rgba(255,255,255,0)),
-            linear-gradient(to right, rgba(255,255,255,0), white 70%) 0 100%,
-            radial-gradient(farthest-side at 0% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)),
-            radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)) 0 100%;
-        background-repeat: no-repeat;
-        background-color: white;
-        background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
-        background-attachment: local, local, scroll, scroll;
+        margin: 0 -1rem;
+        padding: 0 1rem;
     }
     
     .role-cell {
-        min-width: 180px;
+        min-width: 200px !important;
+        max-width: 200px;
     }
     
     table {
         min-width: 100%;
+        table-layout: auto;
+    }
+    
+    th, td {
+        white-space: normal !important;
+        word-wrap: break-word;
     }
 }
  .giveaway-disabled {
@@ -341,7 +340,7 @@ getNextUpcomingDate(view = null) {
         const date = new Date(year, month - 1, day);
         date.setHours(12,0,0,0);
         if (date >= today) {
-            console.warn('🔍 NEXT DATE FOUND:', d.date, '| Day:', date.getDay(), '| Formatted:', date.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }));
+        console.warn('🔍 NEXT DATE FOUND:', d.date, '| Day:', this.getDayOfWeek(d.date), '| Formatted:', date.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }));
             return d.date;
         }
     }
@@ -590,9 +589,22 @@ getNextUpcomingDate(view = null) {
                 }
             },
 
-            async loadHistoricalData() {
-                const hasHistoricalData = localStorage.getItem('uts-historical-loaded-to-supabase');
-                if (hasHistoricalData) {
+          async loadHistoricalData() {
+    // Check if we already have data in Supabase
+    if (!useLocalStorage && supabase) {
+        try {
+            const { data, error } = await supabase.from('volunteer_signups').select('id').limit(1);
+            if (!error && data && data.length > 0) {
+                console.log('Historical data already exists in database');
+                return; // Data exists, don't reload
+            }
+        } catch (e) {
+            console.error('Error checking for existing data:', e);
+        }
+    }
+    
+    const hasHistoricalData = localStorage.getItem('uts-historical-loaded-to-supabase');
+    if (hasHistoricalData === 'true') {
                     console.log('Historical data already loaded to database');
                     return;
                 }

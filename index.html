@@ -11,35 +11,39 @@
             body { background: white !important; }
             .print-full-width { max-width: 100% !important; }
         }
-  .table-container {
-    overflow-x: auto;
+.table-container {
+    width: 100%;
+    overflow-x: auto !important;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     position: relative;
-    max-width: 100%;
 }
 
-/* Better mobile scrolling */
+/* Force scrolling on mobile */
 @media (max-width: 768px) {
     .table-container {
-        overflow-x: scroll;
+        overflow-x: scroll !important;
         -webkit-overflow-scrolling: touch;
-        margin: 0 -1rem;
-        padding: 0 1rem;
+        display: block !important;
+        width: 100vw;
+        margin-left: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .table-container table {
+        width: auto !important;
+        min-width: 900px !important;
+        display: table !important;
     }
     
     .role-cell {
-        min-width: 200px !important;
-        max-width: 200px;
-    }
-    
-    table {
-        min-width: 100%;
-        table-layout: auto;
+        min-width: 150px !important;
     }
     
     th, td {
-        white-space: normal !important;
-        word-wrap: break-word;
+        padding: 0.5rem !important;
+        font-size: 0.75rem !important;
     }
 }
  .giveaway-disabled {

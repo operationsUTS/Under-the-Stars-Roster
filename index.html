@@ -291,22 +291,63 @@ async toggleGiveaway(view, dateStr) {
     this.render();
 },
 
-         getNextUpcomingDate(view = null) {
+       getNextUpcomingDate(view = null) {
+    console.warn('🎯 getNextUpcomingDate called with view:', view, '| currentView:', this.currentView);
+    
     // Use current view if not specified
     const targetView = view || this.currentView;
+    console.warn('🎯 targetView:', targetView);
     
     // Don't show next shift for weekly tasks
     if (targetView === 'weekly-tasks') {
+        console.warn('🎯 Returning null - weekly tasks');
         return null;
     }
     
     const today = new Date();
     today.setHours(0,0,0,0);
+    console.warn('🎯 Today:', today);
     
     // Get dates for the SPECIFIC view (thursday-hall or saturday-hall)
     const period = this.periods.find(p => p.id === this.selectedPeriod);
-    if (!period) return null;
+    if (!period) {
+        console.warn('🎯 No period found!');
+        return null;
+    }
+    console.warn('🎯 Period:', period.label);
     
+    const dates = [];
+    const targetDay = targetView === 'thursday-hall' ? 4 : 6;  // 4 = Thursday, 6 = Saturday
+    console.warn('🎯 Target day of week:', targetDay, '(4=Thu, 6=Sat)');
+    
+    period.months.forEach(month => {
+        const date = new Date(period.year, month - 1, 1);
+        while (date.getMonth() === month - 1) {
+            if (date.getDay() === targetDay) {
+                dates.push({
+                    date: date.toISOString().split('T')[0],
+                    label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                });
+            }
+            date.setDate(date.getDate() + 1);
+        }
+    });
+    
+    console.warn('🎯 Built dates array:', dates.map(d => d.date));
+    
+    for (let d of dates) {
+        // Parse date correctly: YYYY-MM-DD
+        const [year, month, day] = d.date.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        date.setHours(0,0,0,0);
+        if (date >= today) {
+            console.warn('🔍 NEXT DATE FOUND:', d.date, '| Day:', date.getDay(), '| Formatted:', date.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }));
+            return d.date;
+        }
+    }
+    console.warn('🎯 No upcoming date found');
+    return null;
+},
     const dates = [];
     const targetDay = targetView === 'thursday-hall' ? 4 : 6;  // 4 = Thursday, 6 = Saturday
     

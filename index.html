@@ -247,6 +247,10 @@
 async toggleGiveaway(view, dateStr) {
     const key = `${view}-${dateStr}`;
     const newValue = !this.giveawayDates[key];
+    
+    // FIX: Create backup BEFORE making any changes
+    this.createBackup();
+    
     this.giveawayDates[key] = newValue;
     
     // If disabling giveaway, remove any existing signups for that date
@@ -474,19 +478,54 @@ getNextUpcomingDate(view = null) {
                 return true;
             },
 
-            createBackup() {
-                try {
-                    const timestamp = new Date().toISOString();
-                    const backup = { data: this.signups, timestamp: timestamp, version: '1.0' };
-                    const backups = this.getBackups();
-                    backups.push(backup);
-                    if (backups.length > this.backupCount) backups.shift();
-                    localStorage.setItem('uts-roster-backups', JSON.stringify(backups));
-                    console.log('Backup created:', timestamp);
-                } catch (e) {
-                    console.error('Backup creation failed:', e);
+          async createBackup() {
+    try {
+        const timestamp = new Date().toISOString();
+        const backup = { 
+            data: this.signups, 
+            timestamp: timestamp, 
+            version: '1.0' 
+        };
+        
+        // Always save to localStorage
+        const backups = this.getBackups();
+        backups.push(backup);
+        if (backups.length > this.backupCount) backups.shift();
+        localStorage.setItem('uts-roster-backups', JSON.stringify(backups));
+        console.log('Backup created (localStorage):', timestamp);
+        
+        // NEW: Also save to Supabase if available
+        if (!useLocalStorage && supabase) {
+            try {
+                const { error } = await supabase.from('roster_backups').insert({
+                    backup_data: this.signups,
+                    backup_timestamp: timestamp,
+                    backup_version: '1.0',
+                    created_at: timestamp
+                });
+                
+                if (error) throw error;
+                console.log('✓ Backup also saved to Supabase:', timestamp);
+                
+                // Clean up old backups in Supabase (keep last 20)
+                const { data: allBackups } = await supabase
+                    .from('roster_backups')
+                    .select('id, created_at')
+                    .order('created_at', { ascending: false });
+                
+                if (allBackups && allBackups.length > 20) {
+                    const toDelete = allBackups.slice(20).map(b => b.id);
+                    await supabase.from('roster_backups').delete().in('id', toDelete);
+                    console.log(`🗑️ Cleaned up ${toDelete.length} old backups from Supabase`);
                 }
-            },
+            } catch (e) {
+                console.error('Failed to backup to Supabase (localStorage backup still succeeded):', e);
+            }
+        }
+    } catch (e) {
+        console.error('Backup creation failed:', e);
+    }
+},
 
             getBackups() {
                 try {
@@ -499,21 +538,48 @@ getNextUpcomingDate(view = null) {
                 }
             },
 
-            restoreFromBackup() {
-                const backups = this.getBackups();
-                for (let i = backups.length - 1; i >= 0; i--) {
-                    const backup = backups[i];
-                    if (backup.data && this.validateData(backup.data)) {
-                        this.signups = backup.data;
-                        console.log('Restored from backup:', backup.timestamp);
+        async restoreFromBackup() {
+    // First try Supabase backups
+    if (!useLocalStorage && supabase) {
+        try {
+            const { data, error } = await supabase
+                .from('roster_backups')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            
+            if (!error && data && data.length > 0) {
+                for (let backup of data) {
+                    if (backup.backup_data && this.validateData(backup.backup_data)) {
+                        this.signups = backup.backup_data;
+                        console.log('✓ Restored from Supabase backup:', backup.backup_timestamp);
+                        this.showNotification('Restored from cloud backup', 'success');
                         return true;
                     }
                 }
-                console.log('No valid backups found. Starting fresh.');
-                this.signups = {};
-                return false;
-            },
-
+            }
+        } catch (e) {
+            console.error('Failed to restore from Supabase:', e);
+        }
+    }
+    
+    // Fallback to localStorage backups
+    const backups = this.getBackups();
+    for (let i = backups.length - 1; i >= 0; i--) {
+        const backup = backups[i];
+        if (backup.data && this.validateData(backup.data)) {
+            this.signups = backup.data;
+            console.log('Restored from localStorage backup:', backup.timestamp);
+            this.showNotification('Restored from local backup', 'warning');
+            return true;
+        }
+    }
+    
+    console.log('No valid backups found. Starting fresh.');
+    this.signups = {};
+    return false;
+},
+      
             showNotification(message, type = 'success') {
                 if (this.currentView === 'welcome' && !this.isInitialized) {
                     console.log('Notification suppressed on welcome:', message);
@@ -704,9 +770,11 @@ getDatesForPeriod() {
                 if (testDate.getMonth() !== month - 1) break;
                 
                 if (this.getDayOfWeek(dateStr) === targetDay) {
-                console.warn('✅ FOUND DATE:', dateStr, 'Day:', this.getDayOfWeek(dateStr), 'Target:', targetDay);
-                const date = new Date(period.year, month - 1, day);
-                dates.push({
+                    // FIX: Create the wed and thurs Date objects
+                    const wed = new Date(period.year, month - 1, day);
+                    const thurs = new Date(period.year, month - 1, day + 1);
+                    
+                    dates.push({
                         date: dateStr,
                         label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
                     });
@@ -735,140 +803,149 @@ getDatesForPeriod() {
     }
     return dates;
 },
-
-            async loadSignups() {
-                if (useLocalStorage) {
-                    const saved = localStorage.getItem('uts-roster');
-                    if (saved) {
-                        try {
-                            const parsed = JSON.parse(saved);
-                            if (this.validateData(parsed)) {
-                                this.signups = parsed;
-                                this.createBackup();
-                            } else {
-                                console.error('Loaded data is corrupted. Attempting recovery...');
-                                this.restoreFromBackup();
-                            }
-                        } catch (e) {
-                            console.error('Error parsing data:', e);
-                            this.restoreFromBackup();
-                        }
-                    }
-                    const savedNotes = localStorage.getItem('uts-date-notes');
-                    if (savedNotes) {
-                        try {
-                            this.dateNotes = JSON.parse(savedNotes);
-                        } catch (e) {
-                            this.dateNotes = {};
-                        }
-                    }
-                    const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
-                    if (savedGiveaway) {
-                        try {
-                            this.giveawayDates = JSON.parse(savedGiveaway);
-                        } catch (e) {
-                            this.giveawayDates = {};
-                        }
-                    }
-                    const savedEvents = localStorage.getItem('uts-special-events');
-                    if (savedEvents) {
-                        try {
-                            this.specialEvents = JSON.parse(savedEvents);
-                        } catch (e) {
-                            this.specialEvents = [];
-                        }
-                    }
+        async loadSignups() {
+    if (useLocalStorage) {
+        const saved = localStorage.getItem('uts-roster');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (this.validateData(parsed)) {
+                    this.signups = parsed;
+                    this.createBackup();
                 } else {
-                    let retries = 3;
-                    while (retries > 0) {
-                        try {
-                            // Get ALL signups without row limit
-                            let allData = [];
-                            let from = 0;
-                            const pageSize = 1000;
-                            
-                            while (true) {
-                                const { data, error } = await supabase
-                                    .from('volunteer_signups')
-                                    .select('*')
-                                    .range(from, from + pageSize - 1);
-                                    
-                                if (error) throw error;
-                                if (!data || data.length === 0) break;
-                                
-                                allData = allData.concat(data);
-                                if (data.length < pageSize) break;
-                                from += pageSize;
-                            }
-                            
-                            console.log('📥 Loaded from Supabase:', allData.length, 'signups (ALL data)');
-                            console.log('Sample data:', allData.slice(0, 3));
-                            
-                            this.signups = {};
-                            allData.forEach(s => {
-                                if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
-                                if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
-                                if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
-                                this.signups[s.roster_type][s.shift_date][s.role_id].push({
-                                    id: s.id,
-                                    name: s.volunteer_name
-                                });
-                            });
-                            
-                            console.log('📦 Processed signups structure:', {
-                                totalSignups: allData.length,
-                                rosterTypes: Object.keys(this.signups),
-                                thursdayDates: Object.keys(this.signups['thursday-hall'] || {}),
-                                jul2026Sample: this.signups['thursday-hall']?.['2026-07-01']
-                            });
-                            
-                            if (!this.validateData(this.signups)) {
-                                throw new Error('Loaded data failed validation');
-                            }
-                            this.connectionStatus = 'connected';
-                            this.lastSaveTime = new Date();
-                            this.createBackup();
-                            break;
-                        } catch (e) {
-                            retries--;
-                            if (retries === 0) {
-                                console.error('Load failed after retries:', e);
-                                this.connectionStatus = 'error';
-                                this.restoreFromBackup();
-                            } else {
-                                await new Promise(r => setTimeout(r, 1000));
-                            }
-                        }
-                    }
-                    const savedNotes = localStorage.getItem('uts-date-notes');
-                    if (savedNotes) {
-                        try {
-                            this.dateNotes = JSON.parse(savedNotes);
-                        } catch (e) {
-                            this.dateNotes = {};
-                        }
-                    }
-                    const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
-                    if (savedGiveaway) {
-                        try {
-                            this.giveawayDates = JSON.parse(savedGiveaway);
-                        } catch (e) {
-                            this.giveawayDates = {};
-                        }
-                    }
-                    const savedEvents = localStorage.getItem('uts-special-events');
-                    if (savedEvents) {
-                        try {
-                            this.specialEvents = JSON.parse(savedEvents);
-                        } catch (e) {
-                            this.specialEvents = [];
-                        }
-                    }
+                    console.error('Loaded data is corrupted. Attempting recovery...');
+                    this.restoreFromBackup();
                 }
-                if (this.isInitialized) {
-                    this.render();
+            } catch (e) {
+                console.error('Error parsing data:', e);
+                this.restoreFromBackup();
+            }
+        }
+        const savedNotes = localStorage.getItem('uts-date-notes');
+        if (savedNotes) {
+            try {
+                this.dateNotes = JSON.parse(savedNotes);
+            } catch (e) {
+                this.dateNotes = {};
+            }
+        }
+        const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+        if (savedGiveaway) {
+            try {
+                this.giveawayDates = JSON.parse(savedGiveaway);
+            } catch (e) {
+                this.giveawayDates = {};
+            }
+        }
+        const savedEvents = localStorage.getItem('uts-special-events');
+        if (savedEvents) {
+            try {
+                this.specialEvents = JSON.parse(savedEvents);
+            } catch (e) {
+                this.specialEvents = [];
+            }
+        }
+    } else {
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                // Get ALL signups without row limit
+                let allData = [];
+                let from = 0;
+                const pageSize = 1000;
+                
+                // FIX: Add safety limit to prevent infinite loop
+                let maxPages = 100; // Safety: max 100,000 records
+                
+                while (maxPages > 0) {
+                    maxPages--;
+                    
+                    const { data, error } = await supabase
+                        .from('volunteer_signups')
+                        .select('*')
+                        .range(from, from + pageSize - 1);
+                        
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    
+                    allData = allData.concat(data);
+                    if (data.length < pageSize) break;
+                    from += pageSize;
                 }
-            },
+                
+                if (maxPages === 0) {
+                    console.warn('⚠️ Hit pagination safety limit! You may have incomplete data.');
+                    this.showNotification('Warning: Large dataset detected', 'warning');
+                }
+                
+                console.log('📥 Loaded from Supabase:', allData.length, 'signups (ALL data)');
+                console.log('Sample data:', allData.slice(0, 3));
+                
+                this.signups = {};
+                allData.forEach(s => {
+                    if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
+                    if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
+                    if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
+                    this.signups[s.roster_type][s.shift_date][s.role_id].push({
+                        id: s.id,
+                        name: s.volunteer_name
+                    });
+                });
+                
+                console.log('📦 Processed signups structure:', {
+                    totalSignups: allData.length,
+                    rosterTypes: Object.keys(this.signups),
+                    thursdayDates: Object.keys(this.signups['thursday-hall'] || {}),
+                    jul2026Sample: this.signups['thursday-hall']?.['2026-07-01']
+                });
+                
+                if (!this.validateData(this.signups)) {
+                    throw new Error('Loaded data failed validation');
+                }
+                this.connectionStatus = 'connected';
+                this.lastSaveTime = new Date();
+                this.createBackup();
+                break;
+            } catch (e) {
+                retries--;
+                if (retries === 0) {
+                    console.error('Load failed after retries:', e);
+                    this.connectionStatus = 'error';
+                    this.restoreFromBackup();
+                } else {
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+        }
+        const savedNotes = localStorage.getItem('uts-date-notes');
+        if (savedNotes) {
+            try {
+                this.dateNotes = JSON.parse(savedNotes);
+            } catch (e) {
+                this.dateNotes = {};
+            }
+        }
+        const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+        if (savedGiveaway) {
+            try {
+                this.giveawayDates = JSON.parse(savedGiveaway);
+            } catch (e) {
+                this.giveawayDates = {};
+            }
+        }
+        const savedEvents = localStorage.getItem('uts-special-events');
+        if (savedEvents) {
+            try {
+                this.specialEvents = JSON.parse(savedEvents);
+            } catch (e) {
+                this.specialEvents = [];
+            }
+        }
+    }
+    if (this.isInitialized) {
+        this.render();
+    }
+},
 
             async loadSpecialEvents() {
                 if (useLocalStorage) {
@@ -1185,10 +1262,21 @@ async addSignup() {
 async removeSignup(view, dateStr, roleId, signup) {
     if (!confirm(`Remove ${signup.name}?`)) return;
     const originalSignups = JSON.parse(JSON.stringify(this.signups));
+    
+    // FIX: Create backup before deletion
+    this.createBackup();
 
     if (useLocalStorage) {
         try {
-            this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s !== signup);
+            // FIX: Compare by ID and name instead of object reference
+            this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => {
+                if (signup.id) {
+                    return s.id !== signup.id; // Compare by ID if available
+                } else {
+                    return s.name !== signup.name; // Fallback to name comparison
+                }
+            });
+            
             if (!this.validateData(this.signups)) {
                 throw new Error('Data validation failed');
             }
@@ -1221,6 +1309,7 @@ async removeSignup(view, dateStr, roleId, signup) {
     }
     this.render();
 },
+
             getSignups(view, dateStr, roleId) {
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
             },

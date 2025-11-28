@@ -1882,9 +1882,10 @@ return {
 </div>
 <div class="bg-white rounded-lg shadow-xl overflow-hidden">
     <div class="overflow-auto max-h-[600px]">
-        <table class="w-full">
-            <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
-                                            <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
+      <table class="w-full">
+    <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
+        <tr>
+            <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
                                             ${roles.map(role => `
                                                 <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold role-cell">
                                                     <div class="font-bold">${role.name}</div>

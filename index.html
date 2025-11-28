@@ -614,7 +614,8 @@ getNextUpcomingDate(view = null) {
                 notif.textContent = message;
                 document.body.appendChild(notif);
      const duration = type === 'success' ? 5000 : 3000; // Success messages stay 5 seconds
-setTimeout(() => notif.remove(), duration);
+                setTimeout(() => notif.remove(), duration);
+            },
 
             async init() {
                 this.isLoading = true;

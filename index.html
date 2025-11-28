@@ -1884,9 +1884,6 @@ return {
     <div class="overflow-auto max-h-[600px]">
         <table class="w-full">
             <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
-                                <table class="w-full">
-                                <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
-                                        <tr>
                                             <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
                                             ${roles.map(role => `
                                                 <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold role-cell">
@@ -1894,7 +1891,7 @@ return {
                                                     <div class="text-xs opacity-90">${role.time}</div>
                                                 </th>
                                             `).join('')}
-                                            ${this.isAdmin ? '<th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">Notes</th>' : ''}
+                                          <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">Notes</th>
                                             ${this.isAdmin && this.currentView !== 'weekly-tasks' ? '<th class="p-2 md:p-3 text-center text-xs md:text-sm font-semibold">Giveaway</th>' : ''}
                                         </tr>
                                     </thead>
@@ -1969,15 +1966,21 @@ ${roles.map(role => {
                                                     </td>
                                                 `;
                                                 }).join('')}
-                                                ${this.isAdmin ? `
-                                                    <td class="p-2 md:p-3">
-                                                        <input type="text" 
-                                                               placeholder="Add note..." 
-                                                               value="${this.getNote(this.currentView, d.date)}"
-                                                               onchange="app.saveNote('${this.currentView}', '${d.date}', this.value)"
-                                                               class="w-full p-1 text-xs border rounded" />
-                                                    </td>
-                                                ` : ''}
+                                              <td class="p-2 md:p-3">
+    ${this.isAdmin ? `
+        <input type="text" 
+               placeholder="Add note..." 
+               value="${this.getNote(this.currentView, d.date)}"
+               onchange="app.saveNote('${this.currentView}', '${d.date}', this.value)"
+               class="w-full p-1 text-xs border rounded" />
+    ` : `
+        ${this.getNote(this.currentView, d.date) ? `
+            <div class="text-xs bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded text-yellow-900">
+                📝 ${this.getNote(this.currentView, d.date)}
+            </div>
+        ` : ''}
+    `}
+</td>
                                                 ${this.isAdmin && this.currentView !== 'weekly-tasks' ? `
                                                     <td class="p-2 md:p-3 text-center">
                                                         <input type="checkbox" 

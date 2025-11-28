@@ -1828,7 +1828,7 @@ return {
                                         ${!isSpecialEvent ? `<p class="text-gray-600">${currentPeriod.label}</p>` : `<p class="text-gray-600">Special Event</p>`}
                                     </div>
                                     <div class="flex gap-2">
-                                        <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
+                                       <button onclick="event.preventDefault(); app.currentView='welcome'; app.render(); return false;" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
                                         <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Print</button>
                                     </div>
                                 </div>
@@ -1894,7 +1894,10 @@ return {
                                                     <div class="text-xs opacity-90">${role.time}</div>
                                                 </th>
                                             `).join('')}
-                                          <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">Notes</th>
+                                        <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">
+    <div class="font-bold">Notes</div>
+    <div class="text-xs opacity-90">${this.isAdmin ? 'Admin only' : 'If any'}</div>
+</th>
                                           ${this.isAdmin && this.currentView !== 'weekly-tasks' ? '<th class="p-2 md:p-3 text-center text-xs md:text-sm font-semibold">Giveaway</th>' : ''}
                                         </tr>
                                     </thead>
@@ -2436,10 +2439,13 @@ ${this.showModal ? `
                     <div class="min-h-screen p-4">
                         <div class="max-w-6xl mx-auto">
                             <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
-                                <div class="flex justify-between items-center mb-6">
-                                    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
-                                    <button onclick="app.logoutAdmin()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
-                                </div>
+                             <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+    <div class="flex gap-2">
+        <button onclick="event.preventDefault(); app.currentView='welcome'; app.render(); return false;" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">👁️ View as Volunteer</button>
+        <button onclick="app.logoutAdmin()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
+    </div>
+</div>
 
                                 <div class="flex gap-2 mb-6 flex-wrap">
                                     <button onclick="app.adminView='dashboard'; app.render();" class="px-4 py-2 ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Dashboard</button>

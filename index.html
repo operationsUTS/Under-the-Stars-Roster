@@ -674,31 +674,6 @@ getNextUpcomingDate(view = null) {
         adminView: this.adminView
     }, '', window.location.href);
 },
-
-                if (!useLocalStorage && supabase) {
-                    // Subscribe to volunteer signups changes
-                    supabase.channel('signups').on('postgres_changes', 
-                        { event: '*', schema: 'public', table: 'volunteer_signups' }, 
-                        () => this.loadSignups()
-                    ).subscribe();
-                    
-                    // Subscribe to special events changes
-                    supabase.channel('special-events').on('postgres_changes',
-                        { event: '*', schema: 'public', table: 'special_events' },
-                        () => this.loadSpecialEvents()
-                    ).subscribe();
-                    
-                    // Subscribe to settings changes (notes, giveaways)
-                    supabase.channel('settings').on('postgres_changes',
-                        { event: '*', schema: 'public', table: 'roster_settings' },
-                        () => this.loadSettings()
-                    ).subscribe();
-                }
-
-                setInterval(() => this.autoBackup(), 300000);
-                this.createBackup();
-            },
-
             async checkConnection() {
                 if (useLocalStorage) {
                     this.connectionStatus = 'offline';
@@ -1160,7 +1135,7 @@ getDatesForPeriod() {
                 }
                 
        this.createBackup();
-
+            },
             async createSpecialEvent(name, dates, roles, visible = true) {
                 const event = {
                     id: Date.now().toString(),

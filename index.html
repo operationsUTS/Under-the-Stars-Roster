@@ -1871,7 +1871,7 @@ pushState() {navigateTo(view, extraState = {}) {
                                         ${!isSpecialEvent ? `<p class="text-gray-600">${currentPeriod.label}</p>` : `<p class="text-gray-600">Special Event</p>`}
                                     </div>
                                     <div class="flex gap-2">
-                                    <button onclick="history.back(); return false;" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
+                                <button onclick="app.isAdmin && app.currentView.startsWith('event-') ? app.navigateTo('admin', {adminView: 'special-events'}) : app.navigateTo('welcome');" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
                                         <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Print</button>
                                     </div>
                                 </div>

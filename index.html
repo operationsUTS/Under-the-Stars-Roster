@@ -1674,11 +1674,30 @@ return {
                 input.click();
             },
 
-pushState() {navigateTo(view, extraState = {}) {
-                this.currentView = view;
-                Object.assign(this, extraState);
-                this.pushState();
-                this.render();
+navigateTo(view, extraState = {}) {
+    this.currentView = view;
+    Object.assign(this, extraState);
+    this.pushState();
+    this.render();
+},
+
+pushState() {
+    const state = {
+        view: this.currentView,
+        period: this.selectedPeriod,
+        showMySignups: this.showMySignups,
+        isAdmin: this.isAdmin,
+        adminView: this.adminView
+    };
+    
+    const title = this.currentView === 'welcome' ? 'Under the Stars - Home' :
+                 this.currentView === 'admin' ? 'Under the Stars - Admin' :
+                 this.currentView === 'thursday-hall' ? 'Thursday Hall Help' :
+                 this.currentView === 'saturday-hall' ? 'Saturday Hall Help' :
+                 'Under the Stars';
+    
+    history.pushState(state, title, window.location.pathname);
+},
             },
                 const state = {
                     view: this.currentView,
@@ -1808,16 +1827,29 @@ pushState() {navigateTo(view, extraState = {}) {
                                     <p class="text-sm">*Long hair tied back. Closed toe shoes required.</p>
                                 </div>
 
-                                <div class="space-y-3">
-                                  <button onclick="app.navigateTo('thursday-hall');" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
-<button onclick="app.navigateTo('saturday-hall');" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
-<button onclick="app.navigateTo('weekly-tasks');" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
-         <button onclick="app.navigateTo('${event.id}');"
-                                                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
-                                            ${event.name} →
-                                        </button>
-                                    `).join('')}
-                                </div>
+                             <div class="space-y-3">
+    <button onclick="app.navigateTo('thursday-hall');" 
+            class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">
+        Thursday Hall Help →
+    </button>
+    
+    <button onclick="app.navigateTo('saturday-hall');" 
+            class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">
+        Saturday Hall Help →
+    </button>
+    
+    <button onclick="app.navigateTo('weekly-tasks');" 
+            class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">
+        Additional Weekly Tasks →
+    </button>
+    
+    ${this.specialEvents.filter(e => e.visible).map(event => `
+        <button onclick="app.navigateTo('${event.id}');"
+                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
+            ${event.name} →
+        </button>
+    `).join('')}
+</div>
                             </div>
                         </div>
                     </div>
@@ -2137,8 +2169,8 @@ return `
                                 ${dates.map((d, i) => {
                                     const dateClass = this.getDateClass(d.date);
                                     return `
-                                    <tr class="border ${dateClass}">
-                                     <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
+                            <tr class="border ${dateClass}">
+    <td class="p-2 text-sm font-semibold border sticky left-0 bg-gray-50" style="min-width: 100px;">${d.label}</td>
                                         ${roles.map(role => {
                                             if (role.id === 'giveaway' && !this.isGiveawayEnabled(view, d.date)) {
                                                 return '';

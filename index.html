@@ -1115,7 +1115,27 @@ getDatesForPeriod() {
                     }
                 }
                 
-                this.createBackup();
+       this.createBackup();
+                
+                // Handle browser back button
+                window.addEventListener('popstate', (event) => {
+                    if (event.state && event.state.view) {
+                        this.currentView = event.state.view;
+                        this.selectedPeriod = event.state.period || this.selectedPeriod;
+                        this.showMySignups = event.state.showMySignups || false;
+                        this.isAdmin = event.state.isAdmin || false;
+                        this.adminView = event.state.adminView || 'dashboard';
+                        this.render();
+                    }
+                });
+                
+                // Set initial state
+                history.replaceState({
+                    view: this.currentView,
+                    period: this.selectedPeriod,
+                    isAdmin: this.isAdmin,
+                    adminView: this.adminView
+                }, '', window.location.href);
             },
 
             async createSpecialEvent(name, dates, roles, visible = true) {
@@ -1393,20 +1413,22 @@ return {
                 return { totalSlots, filledSlots, needsHelp, coverage: Math.round((filledSlots / totalSlots) * 100) };
             },
 
-            loginAdmin() {
+         loginAdmin() {
                 const password = prompt('Enter admin password:');
                 if (password === ADMIN_PASSWORD) {
                     this.isAdmin = true;
                     this.currentView = 'admin';
+                    this.pushState();
                     this.render();
                 } else if (password !== null) {
                     alert('Incorrect password');
                 }
             },
 
-            logoutAdmin() {
+       logoutAdmin() {
                 this.isAdmin = false;
                 this.currentView = 'welcome';
+                this.pushState();
                 this.render();
             },
 
@@ -1652,6 +1674,29 @@ return {
                 input.click();
             },
 
+pushState() {navigateTo(view, extraState = {}) {
+                this.currentView = view;
+                Object.assign(this, extraState);
+                this.pushState();
+                this.render();
+            },
+                const state = {
+                    view: this.currentView,
+                    period: this.selectedPeriod,
+                    showMySignups: this.showMySignups,
+                    isAdmin: this.isAdmin,
+                    adminView: this.adminView
+                };
+                
+                const title = this.currentView === 'welcome' ? 'Under the Stars - Home' :
+                             this.currentView === 'admin' ? 'Under the Stars - Admin' :
+                             this.currentView === 'thursday-hall' ? 'Thursday Hall Help' :
+                             this.currentView === 'saturday-hall' ? 'Saturday Hall Help' :
+                             'Under the Stars';
+                
+                history.pushState(state, title, window.location.pathname);
+            },
+
             render() {
                 const appEl = document.getElementById('app');
                 
@@ -1764,12 +1809,10 @@ return {
                                 </div>
 
                                 <div class="space-y-3">
-                                    <button onclick="app.currentView='thursday-hall'; app.render();" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
-                                    <button onclick="app.currentView='saturday-hall'; app.render();" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
-                                    <button onclick="app.currentView='weekly-tasks'; app.render();" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
-                                    
-                                    ${this.specialEvents.filter(e => e.visible).map(event => `
-                                        <button onclick="app.currentView='${event.id}'; app.render();" 
+                                  <button onclick="app.navigateTo('thursday-hall');" class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">Thursday Hall Help →</button>
+<button onclick="app.navigateTo('saturday-hall');" class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">Saturday Hall Help →</button>
+<button onclick="app.navigateTo('weekly-tasks');" class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">Additional Weekly Tasks →</button>
+         <button onclick="app.navigateTo('${event.id}');"
                                                 class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
                                             ${event.name} →
                                         </button>
@@ -1828,7 +1871,7 @@ return {
                                         ${!isSpecialEvent ? `<p class="text-gray-600">${currentPeriod.label}</p>` : `<p class="text-gray-600">Special Event</p>`}
                                     </div>
                                     <div class="flex gap-2">
-                                       <button onclick="event.preventDefault(); app.currentView='welcome'; app.render(); return false;" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
+                                    <button onclick="history.back(); return false;" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
                                         <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Print</button>
                                     </div>
                                 </div>

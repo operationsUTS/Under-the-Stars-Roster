@@ -617,19 +617,63 @@ getNextUpcomingDate(view = null) {
                 setTimeout(() => notif.remove(), duration);
             },
 
-            async init() {
-                this.isLoading = true;
-                this.render();
-                
-                await this.checkConnection();
-                await this.loadHistoricalData();
-                await this.loadSignups();
-                await this.loadSpecialEvents();
-                await this.loadSettings();
-                
-                this.isLoading = false;
-                this.isInitialized = true;
-                this.render();
+        async init() {
+    this.isLoading = true;
+    this.render();
+    
+    await this.checkConnection();
+    await this.loadHistoricalData();
+    await this.loadSignups();
+    await this.loadSpecialEvents();
+    await this.loadSettings();
+    
+    this.isLoading = false;
+    this.isInitialized = true;
+    this.render();
+
+    if (!useLocalStorage && supabase) {
+        // Subscribe to volunteer signups changes
+        supabase.channel('signups').on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'volunteer_signups' }, 
+            () => this.loadSignups()
+        ).subscribe();
+        
+        // Subscribe to special events changes
+        supabase.channel('special-events').on('postgres_changes',
+            { event: '*', schema: 'public', table: 'special_events' },
+            () => this.loadSpecialEvents()
+        ).subscribe();
+        
+        // Subscribe to settings changes (notes, giveaways)
+        supabase.channel('settings').on('postgres_changes',
+            { event: '*', schema: 'public', table: 'roster_settings' },
+            () => this.loadSettings()
+        ).subscribe();
+    }
+
+    setInterval(() => this.autoBackup(), 300000);
+    this.createBackup();
+    
+    // Handle browser back button
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.view) {
+            this.currentView = event.state.view;
+            this.selectedPeriod = event.state.period || this.selectedPeriod;
+            this.showMySignups = event.state.showMySignups || false;
+            this.isAdmin = event.state.isAdmin || false;
+            this.adminView = event.state.adminView || 'dashboard';
+            this.render();
+        }
+    });
+    
+    // Set initial state
+    history.replaceState({
+        view: this.currentView,
+        period: this.selectedPeriod,
+        isAdmin: this.isAdmin,
+        adminView: this.adminView
+    }, '', window.location.href);
+},
 
                 if (!useLocalStorage && supabase) {
                     // Subscribe to volunteer signups changes
@@ -1116,27 +1160,6 @@ getDatesForPeriod() {
                 }
                 
        this.createBackup();
-                
-                // Handle browser back button
-                window.addEventListener('popstate', (event) => {
-                    if (event.state && event.state.view) {
-                        this.currentView = event.state.view;
-                        this.selectedPeriod = event.state.period || this.selectedPeriod;
-                        this.showMySignups = event.state.showMySignups || false;
-                        this.isAdmin = event.state.isAdmin || false;
-                        this.adminView = event.state.adminView || 'dashboard';
-                        this.render();
-                    }
-                });
-                
-                // Set initial state
-                history.replaceState({
-                    view: this.currentView,
-                    period: this.selectedPeriod,
-                    isAdmin: this.isAdmin,
-                    adminView: this.adminView
-                }, '', window.location.href);
-            },
 
             async createSpecialEvent(name, dates, roles, visible = true) {
                 const event = {

@@ -1699,22 +1699,6 @@ pushState() {
     history.pushState(state, title, window.location.pathname);
 },
             },
-                const state = {
-                    view: this.currentView,
-                    period: this.selectedPeriod,
-                    showMySignups: this.showMySignups,
-                    isAdmin: this.isAdmin,
-                    adminView: this.adminView
-                };
-                
-                const title = this.currentView === 'welcome' ? 'Under the Stars - Home' :
-                             this.currentView === 'admin' ? 'Under the Stars - Admin' :
-                             this.currentView === 'thursday-hall' ? 'Thursday Hall Help' :
-                             this.currentView === 'saturday-hall' ? 'Saturday Hall Help' :
-                             'Under the Stars';
-                
-                history.pushState(state, title, window.location.pathname);
-            },
 
             render() {
                 const appEl = document.getElementById('app');

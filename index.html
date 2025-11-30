@@ -1907,10 +1907,12 @@ return {
                                             const isNextShift = d.date === nextShiftDate;
                                             return `
                                             <tr class="border-b hover:bg-gray-50 ${dateClass}">
-                                                <td class="p-2 md:p-3 font-semibold text-xs md:text-sm sticky left-0 ${dateClass} z-10 relative">
-                                                    ${isNextShift ? '<div class="next-shift-badge">NEXT SHIFT</div>' : ''}
-                                                    ${d.label}
-                                                </td>
+                                               <td class="p-2 md:p-3 font-semibold text-xs md:text-sm sticky left-0 bg-indigo-600 text-white z-10">
+    <div class="flex flex-col gap-1">
+        ${isNextShift ? '<div class="next-shift-badge">NEXT</div>' : ''}
+        <span>${d.label}</span>
+    </div>
+</td>
 ${roles.map(role => {
     // Check if giveaway is enabled for this specific date
     const isGiveawayRole = role.id === 'giveaway';
@@ -2093,9 +2095,7 @@ return `
                                     const dateClass = this.getDateClass(d.date);
                                     return `
                                     <tr class="border ${dateClass}">
-                                        <td class="p-2 font-semibold text-sm border sticky left-0 ${dateClass} z-10 bg-white" style="min-width: 100px;">
-                                            ${d.label}
-                                        </td>
+                                     <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
                                         ${roles.map(role => {
                                             if (role.id === 'giveaway' && !this.isGiveawayEnabled(view, d.date)) {
                                                 return '';

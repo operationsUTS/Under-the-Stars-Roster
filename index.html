@@ -1339,7 +1339,13 @@ async removeSignup(view, dateStr, roleId, signup) {
             },
 
             getNextShiftStats() {
+    // Don't show next shift for weekly tasks or special events
     if (this.currentView === 'weekly-tasks') return null;
+    
+    // Check if it's a special event (not thursday-hall or saturday-hall)
+    if (this.currentView !== 'thursday-hall' && this.currentView !== 'saturday-hall') {
+        return null;
+    }
     
     const nextDate = this.getNextUpcomingDate(this.currentView);
     if (!nextDate) return null;

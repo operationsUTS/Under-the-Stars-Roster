@@ -2146,26 +2146,365 @@ ${this.showModal ? `
             },
 
             renderAdminRoster(view) {
-                // Admin roster rendering - keeping existing code since we're only improving volunteer view
-                return this.renderRoster(); // Using same rendering for now
+                const specialEvent = this.specialEvents.find(e => e.id === view);
+                const isSpecialEvent = !!specialEvent;
+                
+                const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
+                const dates = this.getDatesForView(view);
+                const roles = this.getVisibleRoles(view);
+                const viewName = isSpecialEvent ? specialEvent.name :
+                                view === 'thursday-hall' ? 'Thursday Hall' : 
+                                view === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
+
+return `
+    <div class="mb-4">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xl font-bold">${viewName}</h3>
+            <button onclick="app.adminView='dashboard'; app.render();" class="px-3 py-1 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600">← Back to Dashboard</button>
+        </div>
+                        ${!isSpecialEvent ? `
+                            <select onchange="app.selectedPeriod=this.value; localStorage.setItem('uts-selected-period', this.value); app.render();" class="w-full md:w-auto p-2 border rounded-lg mb-4">
+                                ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                            </select>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="overflow-x-auto -mx-6 px-6" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                        <table class="w-full border-collapse min-w-max">
+                            <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                                <tr>
+                                    <th class="p-2 text-left text-sm font-semibold border sticky left-0 bg-indigo-600 z-10" style="min-width: 100px;">Date</th>
+                                    ${roles.map(role => `
+                                        <th class="p-2 text-left text-sm font-semibold border" style="min-width: 160px;">
+                                            <div class="font-bold">${role.name}</div>
+                                            <div class="text-xs opacity-90">${role.time}</div>
+                                        </th>
+                                    `).join('')}
+                                    <th class="p-2 text-left text-sm font-semibold border" style="min-width: 120px;">Notes</th>
+                                    ${!isSpecialEvent && view !== 'weekly-tasks' ? '<th class="p-2 text-center text-sm font-semibold border" style="min-width: 80px;">Giveaway</th>' : ''}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dates.map((d, i) => {
+                                    const dateClass = this.getDateClass(d.date);
+                                    return `
+                            <tr class="border ${dateClass}">
+    <td class="p-2 text-sm font-semibold border sticky left-0 bg-gray-50" style="min-width: 100px;">${d.label}</td>
+                                        ${roles.map(role => {
+                                            if (role.id === 'giveaway' && !this.isGiveawayEnabled(view, d.date)) {
+                                                return '';
+                                            }
+                                            
+                                            const signups = this.getSignups(view, d.date, role.id);
+                                            const slotsLeft = role.capacity - signups.length;
+                                            return `
+                                            <td class="p-2 text-sm border" style="min-width: 160px;">
+                                                ${signups.map(signup => {
+                                                    const isEditing = this.editingSignup && 
+                                                                    this.editingSignup.view === view && 
+                                                                    this.editingSignup.dateStr === d.date && 
+                                                                    this.editingSignup.roleId === role.id && 
+                                                                    this.editingSignup.signup === signup;
+                                                    
+                                                    return `
+                                                        <div class="mb-1 flex items-center gap-1 volunteer-item">
+                                                            ${isEditing ? `
+                                                                <input 
+                                                                    type="text" 
+                                                                    value="${signup.name}" 
+                                                                    id="editInput-${i}"
+                                                                    class="flex-1 px-2 py-1 border-2 border-blue-500 rounded"
+                                                                    onkeypress="if(event.key==='Enter'){app.saveEdit(this.value);}"
+                                                                />
+                                                                <button onclick="app.saveEdit(document.getElementById('editInput-${i}').value);" class="text-green-600 hover:text-green-800 text-lg">✓</button>
+                                                                <button onclick="app.cancelEdit();" class="text-red-600 hover:text-red-800 text-lg">✕</button>
+                                                            ` : `
+                                                                <span class="flex-1">✓ ${signup.name}</span>
+                                                                <button onclick="app.startEdit('${view}', '${d.date}', '${role.id}', app.getSignups('${view}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                        class="edit-icon text-sm">✏️</button>
+                                                                <button onclick="app.removeSignup('${view}', '${d.date}', '${role.id}', app.getSignups('${view}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                        class="text-red-600 hover:text-red-800 text-sm ml-1">✕</button>
+                                                            `}
+                                                        </div>
+                                                    `;
+                                                }).join('')}
+                                                ${slotsLeft > 0 && (!this.editingSignup || this.editingSignup.view !== view || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id) ? 
+                                                    Array(slotsLeft).fill(0).map(() => `
+                                                        <button onclick="app.selectedSlot={view:'${view}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+                                                                class="w-full text-left px-2 py-1 mb-1 border-2 border-dashed border-gray-300 rounded hover:border-indigo-500 hover:bg-indigo-50 text-gray-500 text-xs">
+                                                            + Add volunteer
+                                                        </button>
+                                                    `).join('') : ''
+                                                }
+                                            </td>
+                                        `;
+                                        }).join('')}
+                                        <td class="p-2 border" style="min-width: 120px;">
+                                            <input type="text" 
+                                                   placeholder="Add note..." 
+                                                   value="${this.getNote(view, d.date)}"
+                                                   onchange="app.saveNote('${view}', '${d.date}', this.value)"
+                                                   class="w-full p-1 text-xs border rounded" />
+                                        </td>
+                                        ${!isSpecialEvent && view !== 'weekly-tasks' ? `
+                                            <td class="p-2 text-center border" style="min-width: 80px;">
+                                                <input type="checkbox" 
+                                                       ${this.isGiveawayEnabled(view, d.date) ? 'checked' : ''}
+                                                       onchange="app.toggleGiveaway('${view}', '${d.date}')"
+                                                       class="w-4 h-4" />
+                                            </td>
+                                        ` : ''}
+                                    </tr>
+                                `}).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    ${this.showModal ? `
+                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this){app.showModal=false; app.render();}">
+                            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                                <h3 class="text-xl font-bold mb-4">Sign Up</h3>
+                                <input type="text" 
+                                       placeholder="Enter volunteer name" 
+                                       value="${this.volunteerName}"
+                                       oninput="app.volunteerName=this.value"
+                                       onkeypress="if(event.key==='Enter'){app.addSignup();}"
+                                       class="w-full p-3 border rounded-lg mb-4"
+                                       autofocus />
+                                <div class="flex gap-2">
+                                    <button onclick="app.addSignup()" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                        Confirm
+                                    </button>
+                                    <button onclick="app.showModal=false; app.volunteerName=''; app.render();" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
             },
 
             renderSpecialEventsManager() {
-                // Keeping existing special events manager
-                return ''; // Will implement if needed
+                const sortedEvents = [...this.specialEvents].sort((a, b) => {
+                    const aDate = new Date(Math.min(...a.dates.map(d => new Date(d.split('-').map(Number)).getTime())));
+                    const bDate = new Date(Math.min(...b.dates.map(d => new Date(d.split('-').map(Number)).getTime())));
+                    return aDate - bDate;
+                });
+
+                return `
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-2xl font-bold">Special Events</h3>
+                            <button onclick="app.editingEvent='new'; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
+                                ➕ Create New Event
+                            </button>
+                        </div>
+
+                        ${this.editingEvent === 'new' ? this.renderEventForm() : ''}
+
+                        ${sortedEvents.length === 0 ? `
+                            <div class="text-center py-12 text-gray-500">
+                                <p class="text-lg mb-2">No special events yet</p>
+                                <p class="text-sm">Create your first event to get started!</p>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                ${sortedEvents.map(event => {
+                                    const firstDate = event.dates[0];
+                                    const [year, month, day] = firstDate.split('-').map(Number);
+                                    const date = new Date(year, month - 1, day);
+                                    const isPast = date < new Date();
+                                    
+                                    return `
+                                        <div class="border rounded-lg p-4 ${isPast ? 'bg-gray-50' : 'bg-white'} ${event.visible ? 'border-indigo-300' : 'border-gray-300'}">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div class="flex-1">
+                                                    <h4 class="text-lg font-bold ${isPast ? 'text-gray-600' : 'text-gray-900'}">${event.name}</h4>
+                                                    <p class="text-sm text-gray-600">${event.dates.length} date${event.dates.length > 1 ? 's' : ''} • ${event.roles.length} role${event.roles.length > 1 ? 's' : ''}</p>
+                                                </div>
+                                                <div class="flex gap-1">
+                                                    <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
+                                                            class="p-2 ${event.visible ? 'text-green-600' : 'text-gray-400'} hover:bg-gray-100 rounded"
+                                                            title="${event.visible ? 'Visible on welcome screen' : 'Hidden from welcome screen'}">
+                                                        ${event.visible ? '👁️' : '👁️‍🗨️'}
+                                                    </button>
+                                                    <button onclick="app.adminView='event-${event.id}'; app.render();" 
+                                                            class="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Edit roster">
+                                                        📋
+                                                    </button>
+                                                    <button onclick="app.editingEvent='${event.id}'; app.render();" 
+                                                            class="p-2 text-indigo-600 hover:bg-indigo-50 rounded" title="Edit event">
+                                                        ✏️
+                                                    </button>
+                                                    <button onclick="app.deleteSpecialEvent('${event.id}'); app.render();" 
+                                                            class="p-2 text-red-600 hover:bg-red-50 rounded" title="Delete event">
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-3 space-y-1 text-sm">
+                                                <div><strong>Dates:</strong> ${event.dates.slice(0, 3).join(', ')}${event.dates.length > 3 ? '...' : ''}</div>
+                                                <div><strong>Roles:</strong> ${event.roles.map(r => r.name).join(', ')}</div>
+                                            </div>
+
+                                            ${this.editingEvent === event.id ? `
+                                                <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                                                    ${this.renderEventForm(event)}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
             },
 
             renderEventForm(event = null) {
-                // Keeping existing event form
-                return ''; // Will implement if needed
+                const isNew = !event;
+                const formId = isNew ? 'new' : event.id;
+                
+                return `
+                    <div class="bg-white border-2 border-indigo-200 rounded-lg p-6 mt-4" id="eventForm-${formId}">
+                        <h4 class="text-lg font-bold mb-4">${isNew ? 'Create New Event' : 'Edit Event'}</h4>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Event Name *</label>
+                                <input type="text" id="eventName-${formId}" value="${event?.name || ''}" 
+                                       placeholder="e.g., Christmas Dinner" 
+                                       class="w-full p-2 border rounded-lg" />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Event Date(s) *</label>
+                                <div id="eventDates-${formId}" class="space-y-2">
+                                    ${event?.dates.map((d, i) => `
+                                        <div class="flex gap-2">
+                                            <input type="date" value="${d}" class="flex-1 p-2 border rounded-lg event-date" />
+                                            ${event.dates.length > 1 ? `
+                                                <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">✕</button>
+                                            ` : ''}
+                                        </div>
+                                    `).join('') || `
+                                        <div class="flex gap-2">
+                                            <input type="date" class="flex-1 p-2 border rounded-lg event-date" />
+                                        </div>
+                                    `}
+                                </div>
+                                <button onclick="document.getElementById('eventDates-${formId}').insertAdjacentHTML('beforeend', '<div class=\\'flex gap-2\\'><input type=\\'date\\' class=\\'flex-1 p-2 border rounded-lg event-date\\' /><button onclick=\\'this.parentElement.remove();\\' class=\\'px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600\\'>✕</button></div>');" 
+                                        class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">+ Add another date</button>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Roles *</label>
+                                <div class="mb-2 flex gap-2">
+                                    <button onclick="app.copyRolesTemplate('${formId}', 'thursday'); app.render();" class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                                        Copy from Thursday
+                                    </button>
+                                    <button onclick="app.copyRolesTemplate('${formId}', 'saturday'); app.render();" class="px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded hover:bg-orange-200">
+                                        Copy from Saturday
+                                    </button>
+                                </div>
+                                <div id="eventRoles-${formId}" class="space-y-2">
+                                    ${event?.roles.map((r, i) => `
+                                        <div class="flex gap-2 items-start p-2 bg-gray-50 rounded">
+                                            <div class="flex-1 space-y-1">
+                                                <input type="text" value="${r.name}" placeholder="Role name" 
+                                                       class="w-full p-1 border rounded text-sm role-name" />
+                                                <input type="text" value="${r.time}" placeholder="Time (e.g., 10:00am-2:00pm)" 
+                                                       class="w-full p-1 border rounded text-sm role-time" />
+                                                <input type="number" value="${r.capacity}" placeholder="Capacity" min="1" 
+                                                       class="w-20 p-1 border rounded text-sm role-capacity" />
+                                            </div>
+                                            <button onclick="this.parentElement.remove();" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">✕</button>
+                                        </div>
+                                    `).join('') || ''}
+                                </div>
+                                <button onclick="document.getElementById('eventRoles-${formId}').insertAdjacentHTML('beforeend', '<div class=\\'flex gap-2 items-start p-2 bg-gray-50 rounded\\'><div class=\\'flex-1 space-y-1\\'><input type=\\'text\\' placeholder=\\'Role name\\' class=\\'w-full p-1 border rounded text-sm role-name\\' /><input type=\\'text\\' placeholder=\\'Time (e.g., 10:00am-2:00pm)\\' class=\\'w-full p-1 border rounded text-sm role-time\\' /><input type=\\'number\\' placeholder=\\'Capacity\\' min=\\'1\\' class=\\'w-20 p-1 border rounded text-sm role-capacity\\' /></div><button onclick=\\'this.parentElement.remove();\\' class=\\'px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm\\'>✕</button></div>');" 
+                                        class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">+ Add role</button>
+                            </div>
+
+                            <div class="flex gap-2 pt-4">
+                                <button onclick="app.saveEventForm('${formId}');" 
+                                        class="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700">
+                                    ${isNew ? 'Create Event' : 'Save Changes'}
+                                </button>
+                                <button onclick="app.editingEvent=null; app.render();" 
+                                        class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-400">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
             },
 
             copyRolesTemplate(formId, template) {
-                // Keeping existing function
+                const roles = template === 'thursday' ? this.roles['thursday-hall'] : this.roles['saturday-hall'];
+                const rolesHtml = roles.filter(r => r.id !== 'giveaway').map(r => `
+                    <div class="flex gap-2 items-start p-2 bg-gray-50 rounded">
+                        <div class="flex-1 space-y-1">
+                            <input type="text" value="${r.name}" placeholder="Role name" 
+                                   class="w-full p-1 border rounded text-sm role-name" />
+                            <input type="text" value="${r.time}" placeholder="Time" 
+                                   class="w-full p-1 border rounded text-sm role-time" />
+                            <input type="number" value="${r.capacity}" placeholder="Capacity" min="1" 
+                                   class="w-20 p-1 border rounded text-sm role-capacity" />
+                        </div>
+                        <button onclick="this.parentElement.remove();" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">✕</button>
+                    </div>
+                `).join('');
+                
+                document.getElementById(`eventRoles-${formId}`).innerHTML = rolesHtml;
             },
 
             saveEventForm(formId) {
-                // Keeping existing function
+                const name = document.getElementById(`eventName-${formId}`).value.trim();
+                if (!name) {
+                    alert('Please enter an event name');
+                    return;
+                }
+
+                const dateInputs = document.querySelectorAll(`#eventDates-${formId} .event-date`);
+                const dates = Array.from(dateInputs).map(input => input.value).filter(d => d);
+                if (dates.length === 0) {
+                    alert('Please add at least one date');
+                    return;
+                }
+
+                const roleElements = document.querySelectorAll(`#eventRoles-${formId} > div`);
+                const roles = Array.from(roleElements).map((el, i) => {
+                    const roleName = el.querySelector('.role-name').value.trim();
+                    const roleTime = el.querySelector('.role-time').value.trim();
+                    const roleCapacity = parseInt(el.querySelector('.role-capacity').value) || 1;
+                    
+                    if (!roleName) return null;
+                    
+                    return {
+                        id: `role-${i}`,
+                        name: roleName,
+                        time: roleTime,
+                        capacity: roleCapacity
+                    };
+                }).filter(r => r !== null);
+
+                if (roles.length === 0) {
+                    alert('Please add at least one role');
+                    return;
+                }
+
+                if (formId === 'new') {
+                    this.createSpecialEvent(name, dates, roles);
+                } else {
+                    this.updateSpecialEvent(formId, { name, dates, roles });
+                }
+
+                this.editingEvent = null;
+                this.render();
             },
 
             getDatesForView(view) {
@@ -2189,8 +2528,194 @@ ${this.showModal ? `
             },
 
             renderAdmin() {
-                // Keeping existing admin panel
-                return `<div class="min-h-screen p-4"><div class="max-w-6xl mx-auto"><p>Admin panel - keeping existing implementation</p></div></div>`;
+                const stats = this.generateReport();
+                
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-6xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
+                             <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+    <div class="flex gap-2">
+        <button onclick="event.preventDefault(); app.currentView='welcome'; app.render(); return false;" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">👁️ View as Volunteer</button>
+        <button onclick="app.logoutAdmin()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
+    </div>
+</div>
+
+                                <div class="flex gap-2 mb-6 flex-wrap">
+                                    <button onclick="app.adminView='dashboard'; app.render();" class="px-4 py-2 ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Dashboard</button>
+                                    <button onclick="app.adminView='volunteers'; app.render();" class="px-4 py-2 ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Volunteers by Role</button>
+                                    <button onclick="app.adminView='special-events'; app.render();" class="px-4 py-2 ${this.adminView === 'special-events' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Special Events</button>
+                                    <button onclick="app.adminView='thursday-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'thursday-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Thursday Roster</button>
+                                    <button onclick="app.adminView='saturday-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'saturday-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Saturday Roster</button>
+                                    <button onclick="app.adminView='weekly-roster'; app.render();" class="px-4 py-2 ${this.adminView === 'weekly-roster' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Additional Tasks</button>
+                                    <button onclick="app.adminView='settings'; app.render();" class="px-4 py-2 ${this.adminView === 'settings' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Settings</button>
+                                </div>
+
+                                ${this.adminView === 'dashboard' ? `
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <div class="p-4 bg-blue-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-blue-600">${stats.totalSignups}</div>
+                                            <div class="text-gray-600">Total Signups</div>
+                                        </div>
+                                        <div class="p-4 bg-green-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-green-600">${stats.volunteerList.size}</div>
+                                            <div class="text-gray-600">Unique Volunteers</div>
+                                        </div>
+                                        <div class="p-4 bg-purple-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-purple-600">${stats.topVolunteers[0]?.[1] || 0}</div>
+                                            <div class="text-gray-600">Most Signups</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="p-4 bg-blue-50 rounded-lg">
+                                                <h4 class="font-bold text-blue-900 mb-3">👔 Top Meal Managers</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.managers.length > 0 ? stats.topByRole.managers.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-green-50 rounded-lg">
+                                                <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-purple-50 rounded-lg">
+                                                <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks Trolley</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-yellow-50 rounded-lg">
+                                                <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-pink-50 rounded-lg">
+                                                <h4 class="font-bold text-pink-900 mb-3">🧺 Top Laundry</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.laundry.length > 0 ? stats.topByRole.laundry.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-pink-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold mb-3">By Roster Type</h3>
+                                        ${Object.entries(stats.byRoster).map(([type, data]) => `
+                                            <div class="mb-3">
+                                                <div class="font-bold mb-1">
+                                                    ${type === 'thursday-hall' ? 'Thursday Hall' : type === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks'}
+                                                    <span class="text-gray-600 font-normal text-sm">(${data.total} signups, ${data.volunteers.size} volunteers)</span>
+                                                </div>
+                                                <div class="text-sm text-gray-600">
+                                                    ${Array.from(data.volunteers).slice(0, 10).join(', ')}${data.volunteers.size > 10 ? '...' : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : this.adminView === 'volunteers' ? `
+                                    <div class="space-y-6">
+                                    <div class="space-y-6">
+                                        <div class="p-4 bg-blue-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-blue-900 mb-3">👔 Managers (${stats.volunteersByRole.managers.size})</h3>
+                                            <div class="text-sm text-blue-800">
+                                                ${Array.from(stats.volunteersByRole.managers).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-green-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-green-900 mb-3">🤝 Hall Help (${stats.volunteersByRole.hallHelp.size})</h3>
+                                            <div class="text-sm text-green-800">
+                                                ${Array.from(stats.volunteersByRole.hallHelp).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-purple-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-purple-900 mb-3">🥤 Drinks Trolley (${stats.volunteersByRole.drinks.size})</h3>
+                                            <div class="text-sm text-purple-800">
+                                                ${Array.from(stats.volunteersByRole.drinks).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-yellow-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-yellow-900 mb-3">🍽️ Dishes (${stats.volunteersByRole.dishes.size})</h3>
+                                            <div class="text-sm text-yellow-800">
+                                                ${Array.from(stats.volunteersByRole.dishes).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-pink-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-pink-900 mb-3">🧺 Laundry (${stats.volunteersByRole.laundry.size})</h3>
+                                            <div class="text-sm text-pink-800">
+                                                ${Array.from(stats.volunteersByRole.laundry).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : this.adminView === 'special-events' ?
+                                    this.renderSpecialEventsManager() :
+                                  this.adminView.startsWith('event-') ?
+                                    this.renderAdminRoster(this.adminView.replace('event-', '')) :
+                                  this.adminView === 'thursday-roster' ? 
+                                    this.renderAdminRoster('thursday-hall') :
+                                  this.adminView === 'saturday-roster' ? 
+                                    this.renderAdminRoster('saturday-hall') :
+                                  this.adminView === 'weekly-roster' ? 
+                                    this.renderAdminRoster('weekly-tasks') :
+                                `
+                                    <div class="space-y-4">
+                                        <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
+                                            📊 Export to CSV
+                                        </button>
+                                        <button onclick="app.downloadBackup()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                                            💾 Download Backup
+                                        </button>
+                                        <button onclick="app.uploadBackup()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
+                                            📂 Upload Backup
+                                        </button>
+                                        <button onclick="app.addNextQuarter()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                            ➕ Add Next Quarter
+                                        </button>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
         };
 

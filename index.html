@@ -5,7 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Under the Stars Volunteer Roter</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Cache busting meta tags -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <script src="https://cdn.tailwindcss.com?v=20241218"></script>
     <style>
         @media print {
             .no-print { display: none !important; }
@@ -214,8 +219,20 @@
 <body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
     <div id="app"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ <script>
+        window.addEventListener('error', function(e) {
+            console.error('Global error caught:', e.error);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
+            onerror="console.error('Failed to load Supabase library'); window.supabaseLoadFailed = true;"></script>
     <script>
+   const APP_VERSION = '20241218-001';
+        console.log('🚀 App version:', APP_VERSION);
+        
         const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2aGpuY29iaXZ0c3hlZXF2bHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MDAyMTUsImV4cCI6MjA3NzM3NjIxNX0.NZKMBV8WKbef8ADsWAYlgtWlTJsiLqo9T8tjruuy7_k';
         const ADMIN_PASSWORD = 'UTS2025Admin';
@@ -1687,7 +1704,16 @@ pushState() {
                         <div class="min-h-screen flex items-center justify-center">
                             <div class="text-center">
                                 <div class="loading-spinner mx-auto mb-4"></div>
-                                <p class="text-gray-600">Loading roster...</p>
+                          <p class="text-gray-600 text-lg mb-4">Loading roster...</p>
+                                <div class="text-sm text-gray-500 bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                                    <p class="font-semibold mb-2">⏱️ Taking longer than expected?</p>
+                                    <ol class="list-decimal list-inside space-y-1">
+                                        <li>Wait up to 30 seconds</li>
+                                        <li>Try refreshing (Ctrl+R or Cmd+R)</li>
+                                        <li>Clear browser cache and try again</li>
+                                        <li>Try a different browser (Chrome/Firefox/Safari)</li>
+                                    </ol>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -2956,10 +2982,19 @@ n">
         let supabase = null;
         let useLocalStorage = false;
 
+       let initErrors = [];
         try {
+            if (window.supabaseLoadFailed) {
+                throw new Error('Supabase library failed to load');
+            }
+            if (!window.supabase) {
+                throw new Error('Supabase not available');
+            }
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('✓ Supabase initialized successfully');
         } catch (e) {
-            console.error('Supabase failed, using localStorage');
+            console.error('❌ Supabase initialization failed:', e);
+            initErrors.push('Cloud sync unavailable - using local storage mode');
             useLocalStorage = true;
         }
 

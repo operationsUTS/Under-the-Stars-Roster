@@ -229,21 +229,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
             onerror="console.error('Failed to load Supabase library'); window.supabaseLoadFailed = true;"></script>
 <script>
-    function formatSafeDate(dateStr) {
-        if (!dateStr) return "No Date";
-        try {
-            // Fixes "Invalid Date" on mobile by replacing dashes with slashes
-            var normalized = dateStr.toString().replace(/-/g, "/");
+formatSafeDate(dateStr) {
+            if (!dateStr) return "No Date";
+            // FIX: iPhones/Older Androids crash on dates with dashes (-) 
+            // We convert "2024-12-25" to "2024/12/25" so the phone understands it
+            var normalized = dateStr.toString().split('-').join('/');
             var d = new Date(normalized);
-            if (isNaN(d.getTime())) return "Invalid Date";
             
-            // Standard NZ format: DD/MM/YYYY
+            if (isNaN(d.getTime())) return "Invalid Date";
             return d.toLocaleDateString('en-NZ');
-        } catch (e) {
-            return "Invalid Date";
-        }
-    }
-
+        },
     const APP_VERSION = '20241219-001';
         console.log('🚀 App version:', APP_VERSION);
         
@@ -1705,7 +1700,7 @@ pushState() {
         showMySignups: this.showMySignups,
         isAdmin: this.isAdmin,
         adminView: this.adminView
-    };
+    },
     
     const title = this.currentView === 'welcome' ? 'Under the Stars - Home' :
                  this.currentView === 'admin' ? 'Under the Stars - Admin' :
@@ -1750,8 +1745,7 @@ pushState() {
                             <div class="text-xs text-red-400 mt-4 p-2 bg-gray-50 rounded">${error.message}</div>
                         </div>
                     `;
-                }
-            }, // Make sure there is ONLY ONE closing bracket and comma here
+                },
 
             renderMySignups() {
                 return `

@@ -9,8 +9,6 @@
     <style>
         @media print { .no-print { display: none !important; } body { background: white !important; } }
         .table-container { width: 100%; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-        
-        /* Visual Styles */
         .date-past { opacity: 0.4; background-color: #f3f4f6 !important; }
         .date-today { background-color: #fef3c7 !important; border-left: 5px solid #f59e0b !important; }
         .date-next-shift { 
@@ -18,17 +16,14 @@
             border: 3px solid #3b82f6 !important;
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
         }
-        
         .next-shift-badge {
             display: inline-block;
             background: #2563eb; color: white; padding: 2px 8px; border-radius: 6px;
             font-size: 0.6rem; font-weight: 800; animation: pulse 2s infinite;
         }
-        
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         .progress-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 4px; overflow: hidden; }
         .progress-fill { height: 100%; transition: width 0.4s ease; }
-        
         .month-header { 
             background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%); 
             color: white; padding: 1rem; cursor: pointer; display: flex; 
@@ -37,11 +32,9 @@
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-20">
-
     <div id="app"></div>
 
     <script>
-        // Use your Google Apps Script URL here
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySLIlByoG6G-nNVVlaX-sYWNpUlDAHJBp0-DV0WyUCe9YN9URpr4aTdbc_cdWlWM47xQ/exec';
 
         const app = {
@@ -49,10 +42,9 @@
             selectedPeriod: 'oct-dec-2025',
             signups: {}, 
             dateNotes: {},
-            collapsedMonths: {},
+            collapsedMonths: {}, // Will be populated in init()
             isLoading: false,
 
-            // ALL HISTORICAL PERIODS
             periods: [
                 { id: 'oct-dec-2025', label: 'Oct-Dec 2025', months: [10, 11, 12], year: 2025 },
                 { id: 'jan-mar-2026', label: 'Jan-Mar 2026', months: [1, 2, 3], year: 2026 },
@@ -61,7 +53,6 @@
                 { id: 'oct-dec-2026', label: 'Oct-Dec 2026', months: [10, 11, 12], year: 2026 }
             ],
 
-            // ALL ROLES & CAPACITIES
             roles: {
                 'thursday-hall': [
                     { id: 'managers', name: 'Managers', cap: 2, time: '9:45am-1:30pm' },
@@ -84,6 +75,10 @@
             },
 
             async init() {
+                // COLLAPSE ALL MONTHS BY DEFAULT
+                this.periods.forEach(p => {
+                    p.months.forEach(m => { this.collapsedMonths[m] = true; });
+                });
                 await this.refreshData();
             },
 
@@ -95,7 +90,6 @@
                         fetch(`${GOOGLE_SCRIPT_URL}?action=getSignups&t=${Date.now()}`),
                         fetch(`${GOOGLE_SCRIPT_URL}?action=getSettings&t=${Date.now()}`)
                     ]);
-
                     const sigResp = await sigRes.json();
                     const setResp = await setRes.json();
 
@@ -103,20 +97,20 @@
                     if (sigResp && sigResp.data) {
                         sigResp.data.forEach(s => {
                             if (!s.roster_type || !s.shift_date) return;
-                            if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
-                            if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
-                            if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
-                            this.signups[s.roster_type][s.shift_date][s.role_id].push(s.volunteer_name);
+                            const type = s.roster_type.toLowerCase().trim();
+                            const role = s.role_id.toLowerCase().trim();
+                            if (!this.signups[type]) this.signups[type] = {};
+                            if (!this.signups[type][s.shift_date]) this.signups[type][s.shift_date] = {};
+                            if (!this.signups[type][s.shift_date][role]) this.signups[type][s.shift_date][role] = [];
+                            this.signups[type][s.shift_date][role].push(s.volunteer_name);
                         });
                     }
-                    
                     this.dateNotes = {};
                     if (setResp && setResp.data) {
                         setResp.data.forEach(n => {
                             if (n.setting_type === 'note') this.dateNotes[n.setting_key] = n.setting_value;
                         });
                     }
-
                     this.isLoading = false;
                     this.render();
                 } catch (e) {
@@ -127,10 +121,8 @@
 
             getDayOfWeek(dateStr) {
                 const [y, m, d] = dateStr.split('-').map(Number);
-                let mm = m, yy = y;
-                if (mm < 3) { mm += 12; yy--; }
-                const h = (d + Math.floor((13 * (mm + 1)) / 5) + (yy % 100) + Math.floor((yy % 100) / 4) + Math.floor(Math.floor(yy / 100) / 4) - (2 * Math.floor(yy / 100))) % 7;
-                return (h + 6) % 7; 
+                const dObj = new Date(y, m - 1, d);
+                return dObj.getDay(); // 0=Sun, 4=Thurs, 6=Sat
             },
 
             async signup(date, roleId) {
@@ -174,10 +166,10 @@
                             }
                             const monthName = new Date(period.year, m-1, 1).toLocaleString('default', { month: 'long' });
                             return `
-                                <div class="mb-8 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                                <div class="mb-4 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
                                     <div class="month-header" onclick="app.collapsedMonths[${m}]=!app.collapsedMonths[${m}];app.render()">
                                         <span class="text-lg font-black uppercase tracking-wide">${monthName} ${period.year}</span>
-                                        <span>${app.collapsedMonths[m] ? 'Expand +' : 'Collapse -'}</span>
+                                        <span class="text-xs font-bold bg-white/20 px-3 py-1 rounded-full">${app.collapsedMonths[m] ? 'SHOW' : 'HIDE'}</span>
                                     </div>
                                     <div class="${app.collapsedMonths[m] ? 'hidden' : ''} table-container">
                                         <table class="w-full text-sm">

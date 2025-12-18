@@ -1743,7 +1743,6 @@ pushState() {
             appEl.innerHTML = this.renderRoster();
         }
     } catch (error) {
-        // --- THIS PART IS VITAL FOR YOUR VOLUNTEER ---
         console.error("Render Error:", error);
         document.getElementById('app').innerHTML = `
             <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg mt-10 border-t-4 border-red-500">

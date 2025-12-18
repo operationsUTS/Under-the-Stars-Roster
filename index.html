@@ -1715,30 +1715,46 @@ pushState() {
     
     history.pushState(state, title, window.location.pathname);
 },
-            render() {
-                const appEl = document.getElementById('app');
-                
-                if (this.isLoading) {
-                    appEl.innerHTML = `
-                        <div class="min-h-screen flex items-center justify-center">
-                            <div class="text-center">
-                                <div class="loading-spinner mx-auto mb-4"></div>
-                          <p class="text-gray-600 text-lg mb-4">Loading roster...</p>
-                                <div class="text-sm text-gray-500 bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-                                    <p class="font-semibold mb-2">⏱️ Taking longer than expected?</p>
-                                    <ol class="list-decimal list-inside space-y-1">
-                                        <li>Wait up to 30 seconds</li>
-                                        <li>Try refreshing (Ctrl+R or Cmd+R)</li>
-                                        <li>Clear browser cache and try again</li>
-                                        <li>Try a different browser (Chrome/Firefox/Safari)</li>
-                                    </ol>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    return;
-                }
-                
+           render() {
+    try {
+        const appEl = document.getElementById('app');
+        if (!appEl) return;
+
+        if (this.isLoading) {
+            appEl.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="loading-spinner mx-auto mb-4"></div>
+                        <p class="text-gray-600 text-lg mb-4">Loading roster...</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        if (this.showMySignups) {
+            appEl.innerHTML = this.renderMySignups();
+        } else if (this.currentView === 'welcome') {
+            appEl.innerHTML = this.renderWelcome();
+        } else if (this.currentView === 'admin') {
+            appEl.innerHTML = this.renderAdmin();
+        } else {
+            // This is the main view volunteers see
+            appEl.innerHTML = this.renderRoster();
+        }
+    } catch (error) {
+        // --- THIS PART IS VITAL FOR YOUR VOLUNTEER ---
+        console.error("Render Error:", error);
+        document.getElementById('app').innerHTML = `
+            <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg mt-10 border-t-4 border-red-500">
+                <h2 class="text-xl font-bold text-gray-900">⚠️ Load Error</h2>
+                <p class="text-gray-500 text-sm mt-2">Your phone is having trouble reading the date format.</p>
+                <button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded w-full">Try Refreshing</button>
+                <div class="text-xs text-red-400 mt-4 p-2 bg-gray-50 rounded">Error details: ${error.message}</div>
+            </div>
+        `;
+    }
+},
                 if (this.showMySignups) {
                     appEl.innerHTML = this.renderMySignups();
                 } else if (this.currentView === 'welcome') {

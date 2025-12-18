@@ -425,12 +425,23 @@ getNextUpcomingDate(view = null) {
     return null;
 },
 
-            getDateClass(dateStr) {
+getDateClass(dateStr) {
     const today = new Date();
     today.setHours(0,0,0,0);
-    const [year, month, day] = dateStr.split('-').map(Number);
+
+    // --- SAFE CHECK ---
+    if (!dateStr || typeof dateStr !== 'string') return 'date-future';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return 'date-future';
+    
+    // Using individual parts is safer for mobile browsers
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]);
+    const day = parseInt(parts[2]);
+    
     const date = new Date(year, month - 1, day);
     date.setHours(0,0,0,0);
+    
     const nextShift = this.getNextUpcomingDate(this.currentView);
     
     if (dateStr === nextShift) return 'date-next-shift';
@@ -438,7 +449,6 @@ getNextUpcomingDate(view = null) {
     if (date.getTime() === today.getTime()) return 'date-today';
     return 'date-future';
 },
-
             getCoverageClass(filled, total) {
                 const percentage = (filled / total) * 100;
                 if (percentage >= 90) return 'coverage-excellent';

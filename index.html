@@ -218,7 +218,7 @@
 <body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
     <div id="app"></div>
 
- <script>
+<script>
         window.addEventListener('error', function(e) {
             console.error('Global error caught:', e.error);
         });
@@ -226,22 +226,12 @@
             console.error('Unhandled promise rejection:', e.reason);
         });
     </script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
             onerror="console.error('Failed to load Supabase library'); window.supabaseLoadFailed = true;"></script>
-<script>
-formatSafeDate(dateStr) {
-            if (!dateStr) return "No Date";
-            // FIX: iPhones/Older Androids crash on dates with dashes (-) 
-            // We convert "2024-12-25" to "2024/12/25" so the phone understands it
-            var normalized = dateStr.toString().split('-').join('/');
-            var d = new Date(normalized);
-            
-            if (isNaN(d.getTime())) return "Invalid Date";
-            return d.toLocaleDateString('en-NZ');
-        },
-    const APP_VERSION = '20241219-001';
-        console.log('🚀 App version:', APP_VERSION);
-        
+
+    <script>
+        const APP_VERSION = '20241219-001';
         const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2aGpuY29iaXZ0c3hlZXF2bHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MDAyMTUsImV4cCI6MjA3NzM3NjIxNX0.NZKMBV8WKbef8ADsWAYlgtWlTJsiLqo9T8tjruuy7_k';
         const ADMIN_PASSWORD = 'UTS2025Admin';
@@ -259,6 +249,15 @@ formatSafeDate(dateStr) {
         }
 
         const app = {
+            formatSafeDate(dateStr) {
+                if (!dateStr) return "No Date";
+                var normalized = dateStr.toString().split('-').join('/');
+                var d = new Date(normalized);
+                if (isNaN(d.getTime())) return "Invalid Date";
+                return d.toLocaleDateString('en-NZ');
+            },
+
+            collapsedMonths: {},
             currentView: 'welcome',
             selectedPeriod: 'oct-dec-2025',
             showModal: false,
@@ -267,19 +266,6 @@ formatSafeDate(dateStr) {
             signups: {},
             specialEvents: [],
             editingEvent: null,
-            connectionStatus: 'checking',
-            lastSaveTime: null,
-            backupCount: 5,
-            isInitialized: false,
-            isAdmin: false,
-            adminView: 'dashboard',
-            dateNotes: {},
-            giveawayDates: {},
-            showMySignups: false,
-            searchName: '',
-            isLoading: false,
-            editingSignup: null,
-            collapsedMonths: {},
 
             periods: [
                 { id: 'oct-dec-2025', label: 'October - December 2025', months: [10,11,12], year: 2025 },

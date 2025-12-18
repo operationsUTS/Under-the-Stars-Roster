@@ -454,8 +454,7 @@ getNextUpcomingDate(view = null) {
                 
                 const name = this.searchName.trim().toLowerCase();
                 const mySignups = [];
-                
-                for (let rosterType in this.signups) {
+    for (let rosterType in this.signups) {
                     for (let dateStr in this.signups[rosterType]) {
                         for (let roleId in this.signups[rosterType][dateStr]) {
                             const volunteers = this.signups[rosterType][dateStr][roleId];
@@ -464,11 +463,10 @@ getNextUpcomingDate(view = null) {
                                     const role = this.roles[rosterType]?.find(r => r.id === roleId);
                                     const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
                                                       rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
-                             mySignups.push({
-    date: dateStr,
-    dateLabel: formatSafeDate(dateStr), // Uses the safety wrapper
-    roster: rosterName,
-                                        }),
+                                    
+                                    mySignups.push({
+                                        date: dateStr,
+                                        dateLabel: formatSafeDate(dateStr), 
                                         roster: rosterName,
                                         role: role?.name || roleId,
                                         time: role?.time || ''
@@ -478,7 +476,6 @@ getNextUpcomingDate(view = null) {
                         }
                     }
                 }
-                
                 mySignups.sort((a, b) => new Date(a.date) - new Date(b.date));
                 
                 if (mySignups.length === 0) {

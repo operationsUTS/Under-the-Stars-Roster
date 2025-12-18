@@ -2403,28 +2403,17 @@ return `
                     <div class="bg-white border-2 border-indigo-200 rounded-lg p-6 mt-4" id="eventForm-${formId}">
                         <h4 class="text-lg font-bold mb-4">${isNew ? 'Create New Event' : 'Edit Event'}</h4>
                         
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-semibold mb-1">Event Name *</label>
-                                <input type="text" id="eventName-${formId}" value="${event?.name || ''}" 
-                                       placeholder="e.g., Christmas Dinner" 
-                                       class="w-full p-2 border rounded-lg" />
-                            </div>
-
-                            <div>
+                <div>
                                 <label class="block text-sm font-semibold mb-1">Event Date(s) *</label>
                                 <div id="eventDates-${formId}" class="space-y-2">
-                                  ${event?.dates.map((d, i) => 
-    '<div class="flex gap-2">' +
-        '<input type="date" value="' + d + '" class="flex-1 p-2 border rounded-lg event-date" />' +
-        (event.dates.length > 1 ? '<button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">✕</button>' : '') +
-    '</div>'
-).join('') || `
+                                    ${event ? event.dates.map((d, i) => `
+                                        <div class="flex gap-2">
+                                            <input type="date" value="${d}" class="flex-1 p-2 border rounded-lg event-date" />
                                             ${event.dates.length > 1 ? `
                                                 <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">✕</button>
                                             ` : ''}
                                         </div>
-                                    `).join('') || `
+                                    `).join('') : `
                                         <div class="flex gap-2">
                                             <input type="date" class="flex-1 p-2 border rounded-lg event-date" />
                                         </div>

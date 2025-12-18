@@ -4,125 +4,84 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Under the Stars Volunteer Roster</title>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <script src="https://cdn.tailwindcss.com?v=3.4.1"></script>
     <style>
-        @media print { .no-print { display: none !important; } body { background: white !important; } }
-        .table-container { width: 100%; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-        .date-past { opacity: 0.4; background-color: #f3f4f6 !important; }
-        .date-today { background-color: #fef3c7 !important; border-left: 5px solid #f59e0b !important; }
-        .date-next-shift { 
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
-            border: 3px solid #3b82f6 !important;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
-        }
-        .next-shift-badge {
-            display: inline-block;
-            background: #2563eb; color: white; padding: 2px 8px; border-radius: 6px;
-            font-size: 0.6rem; font-weight: 800; animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        .progress-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 4px; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 0.4s ease; }
+        @media print { .no-print { display: none !important; } }
+        .date-past { opacity: 0.5; background-color: #f1f5f9 !important; }
         .month-header { 
-            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%); 
+            background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%); 
             color: white; padding: 1rem; cursor: pointer; display: flex; 
             justify-content: space-between; border-radius: 12px 12px 0 0; 
         }
+        .progress-bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px; }
+        .progress-fill { height: 100%; transition: width 0.4s; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-20">
     <div id="app"></div>
 
     <script>
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySLIlByoG6G-nNVVlaX-sYWNpUlDAHJBp0-DV0WyUCe9YN9URpr4aTdbc_cdWlWM47xQ/exec';
+        // PASTE YOUR NEW GOOGLE WEB APP URL BELOW
+        const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_URL_HERE';
 
         const app = {
             currentView: 'thursday-hall',
             selectedPeriod: 'oct-dec-2025',
             signups: {}, 
-            dateNotes: {},
-            collapsedMonths: {}, // Will be populated in init()
+            // All months start collapsed
+            collapsedMonths: { 1:true, 2:true, 3:true, 4:true, 5:true, 6:true, 7:true, 8:true, 9:true, 10:true, 11:true, 12:true },
             isLoading: false,
 
             periods: [
                 { id: 'oct-dec-2025', label: 'Oct-Dec 2025', months: [10, 11, 12], year: 2025 },
                 { id: 'jan-mar-2026', label: 'Jan-Mar 2026', months: [1, 2, 3], year: 2026 },
-                { id: 'apr-jun-2026', label: 'Apr-Jun 2026', months: [4, 5, 6], year: 2026 },
-                { id: 'jul-sep-2026', label: 'Jul-Sep 2026', months: [7, 8, 9], year: 2026 },
-                { id: 'oct-dec-2026', label: 'Oct-Dec 2026', months: [10, 11, 12], year: 2026 }
+                { id: 'apr-jun-2026', label: 'Apr-Jun 2026', months: [4, 5, 6], year: 2026 }
             ],
 
             roles: {
                 'thursday-hall': [
-                    { id: 'managers', name: 'Managers', cap: 2, time: '9:45am-1:30pm' },
-                    { id: 'hall-help', name: 'Hall Help', cap: 4, time: '10:00am-1:30pm' },
-                    { id: 'drinks', name: 'Drinks', cap: 1, time: '11:15am-1:30pm' },
-                    { id: 'dishes', name: 'Dishes', cap: 1, time: '11:30am-1:30pm' },
-                    { id: 'giveaway', name: 'Giveaway', cap: 2, time: '10:45am-12:45pm' }
+                    { id: 'managers', name: 'Managers', cap: 2 },
+                    { id: 'hall-help', name: 'Hall Help', cap: 4 },
+                    { id: 'drinks', name: 'Drinks', cap: 1 },
+                    { id: 'dishes', name: 'Dishes', cap: 1 },
+                    { id: 'laundry', name: 'Laundry', cap: 1 }
                 ],
                 'saturday-hall': [
-                    { id: 'managers', name: 'Managers', cap: 2, time: '2:45pm-6:30pm' },
-                    { id: 'hall-help-1', name: 'Shift 1', cap: 3, time: '3:15pm-6:30pm' },
-                    { id: 'hall-help-2', name: 'Shift 2', cap: 2, time: '4:30pm-6:30pm' },
-                    { id: 'drinks', name: 'Drinks', cap: 1, time: '4:00pm-6:30pm' }
+                    { id: 'managers', name: 'Managers', cap: 2 },
+                    { id: 'hall-help-1', name: 'Shift 1', cap: 3 },
+                    { id: 'hall-help-2', name: 'Shift 2', cap: 2 },
+                    { id: 'drinks', name: 'Drinks', cap: 1 },
+                    { id: 'dishes', name: 'Dishes', cap: 1 },
+                    { id: 'laundry', name: 'Laundry', cap: 1 }
                 ],
                 'weekly-tasks': [
-                    { id: 'wed-pickup', name: 'Wed Bakers Delight', cap: 1, time: '~3:45pm' },
-                    { id: 'thurs-pickup', name: 'Thurs Bakers Delight', cap: 1, time: '4:50pm' },
-                    { id: 'cheesecake', name: 'Cheesecake Shop', cap: 1, time: '3-6pm Fri' }
+                    { id: 'wed-pickup', name: 'Wed Pickup', cap: 1 },
+                    { id: 'thurs-pickup', name: 'Thurs Pickup', cap: 1 },
+                    { id: 'cheesecake', name: 'Cheesecake', cap: 1 }
                 ]
             },
 
-            async init() {
-                // COLLAPSE ALL MONTHS BY DEFAULT
-                this.periods.forEach(p => {
-                    p.months.forEach(m => { this.collapsedMonths[m] = true; });
-                });
-                await this.refreshData();
-            },
+            async init() { await this.refreshData(); },
 
             async refreshData() {
-                this.isLoading = true; 
-                this.render();
+                this.isLoading = true; this.render();
                 try {
-                    const [sigRes, setRes] = await Promise.all([
-                        fetch(`${GOOGLE_SCRIPT_URL}?action=getSignups&t=${Date.now()}`),
-                        fetch(`${GOOGLE_SCRIPT_URL}?action=getSettings&t=${Date.now()}`)
-                    ]);
-                    const sigResp = await sigRes.json();
-                    const setResp = await setRes.json();
-
+                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSignups&t=${Date.now()}`);
+                    const json = await res.json();
                     this.signups = {};
-                    if (sigResp && sigResp.data) {
-                        sigResp.data.forEach(s => {
-                            if (!s.roster_type || !s.shift_date) return;
-                            const type = s.roster_type.toLowerCase().trim();
-                            const role = s.role_id.toLowerCase().trim();
+                    if (json.data) {
+                        json.data.forEach(s => {
+                            const type = s.roster_type;
+                            const date = s.shift_date;
+                            const role = s.role_id;
                             if (!this.signups[type]) this.signups[type] = {};
-                            if (!this.signups[type][s.shift_date]) this.signups[type][s.shift_date] = {};
-                            if (!this.signups[type][s.shift_date][role]) this.signups[type][s.shift_date][role] = [];
-                            this.signups[type][s.shift_date][role].push(s.volunteer_name);
+                            if (!this.signups[type][date]) this.signups[type][date] = {};
+                            if (!this.signups[type][date][role]) this.signups[type][date][role] = [];
+                            this.signups[type][date][role].push(s.volunteer_name);
                         });
                     }
-                    this.dateNotes = {};
-                    if (setResp && setResp.data) {
-                        setResp.data.forEach(n => {
-                            if (n.setting_type === 'note') this.dateNotes[n.setting_key] = n.setting_value;
-                        });
-                    }
-                    this.isLoading = false;
-                    this.render();
-                } catch (e) {
-                    console.error("Sync Error:", e);
-                    document.getElementById('app').innerHTML = `<div class="p-20 text-center"><h2 class="text-red-600 font-bold">Connection Failed</h2><button onclick="app.refreshData()" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded">Retry</button></div>`;
-                }
-            },
-
-            getDayOfWeek(dateStr) {
-                const [y, m, d] = dateStr.split('-').map(Number);
-                const dObj = new Date(y, m - 1, d);
-                return dObj.getDay(); // 0=Sun, 4=Thurs, 6=Sat
+                } catch (e) { console.error("Data load failed", e); }
+                this.isLoading = false; this.render();
             },
 
             async signup(date, roleId) {
@@ -135,104 +94,79 @@
 
             render() {
                 const root = document.getElementById('app');
-                if (this.isLoading) { root.innerHTML = '<div class="flex justify-center mt-20"><div class="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>'; return; }
+                if (this.isLoading) { root.innerHTML = '<div class="flex justify-center mt-20 font-bold text-indigo-600">UPDATING ROSTER...</div>'; return; }
 
                 const period = this.periods.find(p => p.id === this.selectedPeriod);
                 const today = new Date().toISOString().split('T')[0];
                 const targetDay = this.currentView === 'thursday-hall' ? 4 : (this.currentView === 'saturday-hall' ? 6 : 3);
-                let nextShiftDate = null;
 
                 root.innerHTML = `
-                    <div class="max-w-6xl mx-auto p-4 md:p-8">
-                        <header class="text-center mb-10 no-print">
-                            <h1 class="text-4xl font-black text-indigo-950 uppercase tracking-tight mb-6">Under the Stars</h1>
-                            <div class="flex flex-wrap justify-center gap-3">
-                                <button onclick="app.currentView='thursday-hall';app.render()" class="px-6 py-2 rounded-xl font-bold shadow ${this.currentView==='thursday-hall'?'bg-indigo-600 text-white':'bg-white text-indigo-600'}">Thursday</button>
-                                <button onclick="app.currentView='saturday-hall';app.render()" class="px-6 py-2 rounded-xl font-bold shadow ${this.currentView==='saturday-hall'?'bg-indigo-600 text-white':'bg-white text-indigo-600'}">Saturday</button>
-                                <button onclick="app.currentView='weekly-tasks';app.render()" class="px-6 py-2 rounded-xl font-bold shadow ${this.currentView==='weekly-tasks'?'bg-indigo-600 text-white':'bg-white text-indigo-600'}">Weekly Tasks</button>
+                    <div class="max-w-6xl mx-auto p-4">
+                        <header class="text-center mb-8 no-print">
+                            <h1 class="text-4xl font-black text-slate-900 mb-6">UNDER THE STARS</h1>
+                            <div class="flex flex-wrap justify-center gap-2">
+                                ${Object.keys(this.roles).map(v => `
+                                    <button onclick="app.currentView='${v}';app.render()" class="px-6 py-2 rounded-xl font-bold transition ${this.currentView===v?'bg-indigo-600 text-white shadow-lg':'bg-white border text-slate-600'}">
+                                        ${v.replace('-',' ').toUpperCase()}
+                                    </button>
+                                `).join('')}
                             </div>
                         </header>
 
                         ${period.months.map(m => {
                             const dates = [];
-                            for(let d=1; d<=31; d++){
-                                const dateStr = `${period.year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                            for(let d=1; d<=31; d++) {
                                 const dObj = new Date(period.year, m-1, d);
                                 if(dObj.getMonth() !== m-1) break;
-                                if(this.getDayOfWeek(dateStr) === targetDay) {
-                                    dates.push(dateStr);
-                                    if (!nextShiftDate && dateStr >= today) nextShiftDate = dateStr;
-                                }
+                                if(dObj.getDay() === targetDay) dates.push(dObj.toISOString().split('T')[0]);
                             }
                             const monthName = new Date(period.year, m-1, 1).toLocaleString('default', { month: 'long' });
                             return `
-                                <div class="mb-4 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                                <div class="mb-4 bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
                                     <div class="month-header" onclick="app.collapsedMonths[${m}]=!app.collapsedMonths[${m}];app.render()">
-                                        <span class="text-lg font-black uppercase tracking-wide">${monthName} ${period.year}</span>
-                                        <span class="text-xs font-bold bg-white/20 px-3 py-1 rounded-full">${app.collapsedMonths[m] ? 'SHOW' : 'HIDE'}</span>
+                                        <span class="font-black uppercase tracking-wider">${monthName} ${period.year}</span>
+                                        <span class="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">${this.collapsedMonths[m] ? 'EXPAND' : 'HIDE'}</span>
                                     </div>
-                                    <div class="${app.collapsedMonths[m] ? 'hidden' : ''} table-container">
-                                        <table class="w-full text-sm">
-                                            <thead>
-                                                <tr class="bg-slate-50 border-b">
-                                                    <th class="p-4 text-left border-r w-32">Date</th>
-                                                    ${this.roles[this.currentView].map(r => `<th class="p-4 text-left border-r">${r.name}<div class="text-[10px] font-normal text-slate-400 uppercase">${r.time}</div></th>`).join('')}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                ${dates.map(date => {
-                                                    const isPast = date < today;
-                                                    const isNext = date === nextShiftDate;
-                                                    return `
-                                                        <tr class="border-b last:border-0 ${isPast ? 'date-past' : (isNext ? 'date-next-shift' : '')}">
-                                                            <td class="p-4 font-black align-top">
-                                                                <div class="text-slate-800">${new Date(date).getDate()} ${monthName.slice(0,3)}</div>
-                                                                ${isNext ? '<div class="next-shift-badge mt-1">NEXT</div>' : ''}
-                                                                ${this.dateNotes[date] ? `<div class="text-[10px] text-orange-600 font-bold mt-2 leading-tight">${this.dateNotes[date]}</div>` : ''}
+                                    <div class="${this.collapsedMonths[m] ? 'hidden' : ''} overflow-x-auto">
+                                        <table class="w-full text-left text-sm">
+                                            <tr class="bg-slate-50 border-b">
+                                                <th class="p-4 w-28 font-black text-slate-400">DATE</th>
+                                                ${this.roles[this.currentView].map(r => `<th class="p-4 font-black text-slate-400">${r.name.toUpperCase()}</th>`).join('')}
+                                            </tr>
+                                            ${dates.map(date => `
+                                                <tr class="border-b ${date < today ? 'date-past' : ''}">
+                                                    <td class="p-4 font-bold text-slate-700">${date.split('-')[2]} ${monthName.slice(0,3)}</td>
+                                                    ${this.roles[this.currentView].map(role => {
+                                                        const names = (this.signups[this.currentView] || {})[date]?.[role.id] || [];
+                                                        const pct = Math.min((names.length / role.cap) * 100, 100);
+                                                        return `
+                                                            <td class="p-4 border-l border-slate-50">
+                                                                <div class="min-h-[40px] space-y-1 mb-2">
+                                                                    ${names.map(n => `<div class="bg-white border border-slate-200 px-2 py-1 rounded shadow-sm font-semibold text-indigo-900">${n}</div>`).join('')}
+                                                                </div>
+                                                                ${date >= today && names.length < role.cap ? `<button onclick="app.signup('${date}','${role.id}')" class="text-indigo-600 font-bold hover:underline">+ JOIN</button>` : ''}
+                                                                <div class="progress-bar"><div class="progress-fill ${pct>=100?'bg-emerald-500':'bg-indigo-400'}" style="width:${pct}%"></div></div>
                                                             </td>
-                                                            ${this.roles[this.currentView].map(role => {
-                                                                const names = this.signups[this.currentView]?.[date]?.[role.id] || [];
-                                                                const pct = Math.min((names.length / role.cap) * 100, 100);
-                                                                const barColor = pct >= 100 ? 'bg-emerald-500' : (pct > 0 ? 'bg-orange-400' : 'bg-slate-300');
-                                                                return `
-                                                                    <td class="p-4 border-r align-top">
-                                                                        <div class="space-y-1 mb-3 min-h-[40px]">
-                                                                            ${names.map(n => `<div class="bg-white border border-slate-200 p-1.5 rounded-lg text-xs shadow-sm font-semibold text-slate-700">${n}</div>`).join('')}
-                                                                            ${!isPast && names.length < role.cap ? `<button onclick="app.signup('${date}','${role.id}')" class="text-indigo-600 font-black text-[10px] hover:text-indigo-800 tracking-wider uppercase">+ Join</button>` : ''}
-                                                                        </div>
-                                                                        <div class="progress-bar"><div class="progress-fill ${barColor}" style="width:${pct}%"></div></div>
-                                                                    </td>
-                                                                `;
-                                                            }).join('')}
-                                                        </tr>
-                                                    `;
-                                                }).join('')}
-                                            </tbody>
+                                                        `;
+                                                    }).join('')}
+                                                </tr>
+                                            `).join('')}
                                         </table>
                                     </div>
                                 </div>
                             `;
                         }).join('')}
 
-                        <footer class="mt-12 bg-slate-900 text-white p-8 rounded-3xl no-print">
-                            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
-                                <div>
-                                    <label class="text-[10px] uppercase font-black text-slate-400 tracking-widest block mb-2">Select Roster Period</label>
-                                    <select onchange="app.selectedPeriod=this.value;app.render()" class="bg-slate-800 text-white p-3 rounded-xl border-none font-bold outline-none cursor-pointer hover:bg-slate-700 transition">
-                                        ${this.periods.map(p => `<option value="${p.id}" ${this.selectedPeriod===p.id?'selected':''}>${p.label}</option>`).join('')}
-                                    </select>
-                                </div>
-                                <div class="flex gap-4">
-                                    <button onclick="window.print()" class="bg-white text-slate-950 px-6 py-3 rounded-xl font-black shadow-lg">PRINT</button>
-                                    <button onclick="app.refreshData()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black shadow-lg">REFRESH</button>
-                                </div>
-                            </div>
+                        <footer class="mt-8 flex justify-between items-center no-print">
+                            <select onchange="app.selectedPeriod=this.value;app.render()" class="p-2 border rounded-lg font-bold">
+                                ${this.periods.map(p => `<option value="${p.id}" ${this.selectedPeriod===p.id?'selected':''}>${p.label}</option>`).join('')}
+                            </select>
+                            <button onclick="app.refreshData()" class="bg-slate-800 text-white px-6 py-2 rounded-xl font-bold">REFRESH DATA</button>
                         </footer>
                     </div>
                 `;
             }
         };
-
         app.init();
     </script>
 </body>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -247,23 +247,37 @@
     const APP_VERSION = '20241219-001';
         console.log('🚀 App version:', APP_VERSION);
         
-        const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2aGpuY29iaXZ0c3hlZXF2bHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MDAyMTUsImV4cCI6MjA3NzM3NjIxNX0.NZKMBV8WKbef8ADsWAYlgtWlTJsiLqo9T8tjruuy7_k';
-        const ADMIN_PASSWORD = 'UTS2025Admin';
-
-        const HISTORICAL_DATA = {"thursday-hall":{"2025-10-02":{"managers":[{name:"Ani"},{name:"Carl"}],"hall-help":[{name:"Ali"},{name:"Lesley"},{name:"Alixandra Villis (new CIP)"},{name:"Anil (New, CIP)"}],"drinks":[{name:"Ali or Lesley"}],"laundry":[{name:"Catherine"}]},"2025-10-09":{"managers":[{name:"Rose"},{name:"Carl"}],"hall-help":[{name:"Janet"},{name:"Sara"},{name:"Tina"}],"drinks":[{name:"Lesley"}],"dishes":[{name:"Catherine (coming early)"}],"laundry":[{name:"Catherine"}]},"2025-10-16":{"managers":[{name:"Rose"},{name:"Carl"}],"hall-help":[{name:"Lesley"},{name:"Catherine"},{name:"Viv Clark (new)"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Liz"}]},"2025-10-23":{"managers":[{name:"Carl"},{name:"Adrian"}],"hall-help":[{name:"Ali"},{name:"Tina"},{name:"Paul"},{name:"Sarah Cornish (new)"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Lesley (hall help)"}],"laundry":[{name:"Adrian"}]},"2025-10-30":{"managers":[{name:"Ani"},{name:"Carl"}],"hall-help":[{name:"Kerry (2 hours)"},{name:"Sara"},{name:"Lesley"},{name:"Deb"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Liz"}]},"2025-11-06":{"managers":[{name:"Ani"},{name:"Adrian 9:30-1:15"}],"hall-help":[{name:"Maria and Maca (until 115)"},{name:"Tina"},{name:"Deb"},{name:"Richard (one lineage, new)"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Lesley"}],"laundry":[{name:"Adrian"}]},"2025-11-13":{"managers":[{name:"Adrian"},{name:"Rose"}],"hall-help":[{name:"Sarah Cornish"},{name:"Harina (FCU, new)"},{name:"Lesley"},{name:"Larissa (FCU)"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Adrian"}]},"2025-11-20":{"managers":[{name:"Rose"}],"hall-help":[{name:"Ali"},{name:"Tina"},{name:"Matthew Poland (one lineage, new)"},{name:"Nikita (one lineage)"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Lesley"}]},"2025-11-27":{"managers":[{name:"Adrian 9:30-1:15"}],"hall-help":[{name:"Ali"},{name:"Sara"},{name:"Rachel K"},{name:"Deb"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Adrian"}]},"2025-12-04":{"managers":[{name:"Ani"},{name:"Rose"}],"hall-help":[{name:"Ali"},{name:"Lesley"},{name:"MJ (one lineage)"},{name:"Nick (one lineage, new)"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Catherine"}],"laundry":[{name:"Catherine"}]},"2025-12-11":{"managers":[{name:"Adrian"},{name:"Rose"}],"hall-help":[{name:"Ali"},{name:"Lesley"},{name:"Elaine (one lineage, new)"},{name:"Matthew (one lineage, new)"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Adrian"}]},"2025-12-18":{"managers":[{name:"Ani"},{name:"Adrian"}],"hall-help":[{name:"Ali"},{name:"Josh (one lineage, new)"},{name:"Lesley"}],"drinks":[{name:"Sue"}]},"2025-12-25":{"hall-help":[{name:"Carol"},{name:"Lesley"},{name:"Steve (Lesley husband)"},{name:"Harley"},{name:"Elle"}]}},"saturday-hall":{"2025-10-04":{"managers":[{name:"Carol"}],"hall-help-1":[{name:"Abbey (new)"},{name:"Sarah (new)"},{name:"Morgan"}],"hall-help-2":[{name:"Aimi"},{name:"Steve"}],"drinks":[{name:"Christine"}],"dishes":[{name:"Uatesoni"}],"laundry":[{name:"Morgan"}]},"2025-10-11":{"managers":[{name:"Carl"},{name:"Keiran"}],"hall-help-1":[{name:"Harriet Campbell (new)"},{name:"Jolene"},{name:"Cathleen"}],"hall-help-2":[{name:"Uatesoni"},{name:"Elle"}],"drinks":[{name:"Catherine"}],"dishes":[{name:"Rachelt"}],"laundry":[{name:"Sue"}]},"2025-10-18":{"managers":[{name:"Keiran"}],"hall-help-1":[{name:"Paul"},{name:"Cecilia (new)"},{name:"Michelle"}],"hall-help-2":[{name:"Harley"},{name:"Maryanne"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Sara"}],"laundry":[{name:"Sue"}]},"2025-10-25":{"managers":[{name:"Rose"}],"hall-help-1":[{name:"Paul"},{name:"Joanne (new)"},{name:"Harley"}],"hall-help-2":[{name:"Jaylah (16,new)"},{name:"Jaylah's mum (new)"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Maria Moran"}],"laundry":[{name:"Liz"}]},"2025-11-01":{"managers":[{name:"Carol"}],"hall-help-1":[{name:"Abbey"},{name:"Kaaren"},{name:"Harley"}],"hall-help-2":[{name:"Cecilia"},{name:"Maryanne"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Jimmy"}],"laundry":[{name:"Sue"}]},"2025-11-08":{"managers":[{name:"Keiran 4 - 6"},{name:"Carl"}],"hall-help-1":[{name:"Harriet Campbell"},{name:"Elle"}],"hall-help-2":[{name:"Cathleen Meichtry"},{name:"Karen P"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Rachelt"}],"laundry":[{name:"Sue"}]},"2025-11-15":{"managers":[{name:"Keiran"}],"hall-help-1":[{name:"Sara"},{name:"Morgan"},{name:"Elle"}],"hall-help-2":[{name:"Maryanne"},{name:"Lisa"}],"drinks":[{name:"Sue"}],"dishes":[{name:"Jolene"}],"laundry":[{name:"Sue"}]},"2025-11-22":{"managers":[{name:"Carl"},{name:"Ani 4 - 6"}],"hall-help-1":[{name:"Jaylah"},{name:"Jaylahs mum"},{name:"Cecilia"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Lynn Lee"}]},"2025-11-29":{"managers":[{name:"Rose"},{name:"Carl"}],"hall-help-1":[{name:"Rachelt"},{name:"Steve"},{name:"Arshy (new)"}],"drinks":[{name:"Sue"}]},"2025-12-06":{"hall-help-1":[{name:"Abbey"},{name:"Cathleen Meichtry"}],"hall-help-2":[{name:"Harley"}],"drinks":[{name:"Sue"}],"laundry":[{name:"Lynn Lee"}]},"2025-12-13":{"managers":[{name:"Keiran"}],"hall-help-2":[{name:"Maryanne"}],"drinks":[{name:"Sue"}]},"2025-12-20":{"hall-help-1":[{name:"Paul"},{name:"Harriet"},{name:"Elle"},{name:"Maryanne"}],"drinks":[{name:"Sue"}]},"2025-12-27":{"managers":[{name:"Rose"}],"hall-help-2":[{name:"Harley"},{name:"Maryanne"}],"drinks":[{name:"Sue"}]}},"weekly-tasks":{"2025-10-01":{"wed-pickup":[{name:"Carl"}],"thurs-pickup":[{name:"Carl"}]},"2025-10-08":{"wed-pickup":[{name:"Carl"}],"thurs-pickup":[{name:"Carl"}]},"2025-10-15":{"wed-pickup":[{name:"Carl"}],"thurs-pickup":[{name:"Carl"}],"cheesecake":[{name:"Rose"}]},"2025-10-22":{"wed-pickup":[{name:"Greg"}],"thurs-pickup":[{name:"Carl"}]},"2025-10-29":{"wed-pickup":[{name:"Carl"}],"thurs-pickup":[{name:"Carl"}]},"2025-11-05":{"wed-pickup":[{name:"Carl"}],"thurs-pickup":[{name:"Carl"}]},"2025-11-12":{"wed-pickup":[{name:"Carl"}],"thurs-pickup":[{name:"Catherine"}]}}};
-
-        let supabase = null;
-        let useLocalStorage = false;
-
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch (e) {
-            console.error('Supabase failed, using localStorage');
-            useLocalStorage = true;
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySLIlByoG6G-nNVVlaX-sYWNpUlDAHJBp0-DV0WyUCe9YN9URpr4aTdbc_cdWlWM47xQ/exec';
+// Google Sheets API wrapper
+const googleAPI = {
+    async call(action, params = {}) {
+        const url = new URL(GOOGLE_SCRIPT_URL);
+        url.searchParams.append('action', action);
+        
+        for (let key in params) {
+            url.searchParams.append(key, params[key]);
         }
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error');
+            }
+            
+            return data;
+        } catch (e) {
+            console.error('Google API Error:', e);
+            throw e;
+        }
+    }
+};
 
-        const app = {
+let useLocalStorage = false;
+const ADMIN_PASSWORD = 'UTS2025Admin';
+
+               const app = {
             currentView: 'welcome',
             selectedPeriod: 'oct-dec-2025',
             showModal: false,
@@ -353,47 +367,41 @@ async toggleGiveaway(view, dateStr) {
     const newValue = !this.giveawayDates[key];
     
     this.createBackup();
-    
     this.giveawayDates[key] = newValue;
     
-    if (!newValue) {
-        if (this.signups[view] && this.signups[view][dateStr] && this.signups[view][dateStr]['giveaway']) {
-            const giveawaySignups = this.signups[view][dateStr]['giveaway'];
-            
-            if (!useLocalStorage && supabase && giveawaySignups.length > 0) {
+    try {
+        await googleAPI.call('saveSetting', {
+            setting_type: 'giveaway',
+            setting_key: key,
+            setting_value: newValue ? 'true' : 'false'
+        });
+        
+        // If disabling giveaway, remove existing signups
+        if (!newValue) {
+            if (this.signups[view] && this.signups[view][dateStr] && this.signups[view][dateStr]['giveaway']) {
+                const giveawaySignups = this.signups[view][dateStr]['giveaway'];
+                
                 for (let signup of giveawaySignups) {
                     if (signup.id) {
-                        await supabase.from('volunteer_signups').delete().eq('id', signup.id);
+                        await googleAPI.call('removeSignup', { id: signup.id });
                     }
                 }
+                
+                this.signups[view][dateStr]['giveaway'] = [];
             }
-            
-            this.signups[view][dateStr]['giveaway'] = [];
         }
+        
+        localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+        this.showNotification(newValue ? 'Giveaway table enabled' : 'Giveaway table disabled');
+        
+    } catch (e) {
+        console.error('Error toggling giveaway:', e);
+        this.showNotification('Error saving giveaway setting', 'error');
     }
     
-    localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
-    
-    if (!useLocalStorage && supabase) {
-        try {
-            await supabase.from('roster_settings').upsert({
-                setting_type: 'giveaway',
-                setting_key: key,
-                setting_value: newValue ? 'true' : 'false',
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'setting_type,setting_key' });
-        } catch (e) {
-            console.error('Error syncing giveaway toggle:', e);
-        }
-    }
-    
-    if (useLocalStorage) {
-        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-    }
-    
-    this.showNotification(newValue ? 'Giveaway table enabled' : 'Giveaway table disabled');
     this.render();
 },
+
 
 getNextUpcomingDate(view = null) {
     const targetView = view || this.currentView;
@@ -507,41 +515,35 @@ getDateClass(dateStr) {
                 this.render();
             },
 
-            async saveEdit(newName) {
-                if (!newName.trim()) {
-                    alert('Name cannot be empty');
-                    return;
-                }
+       async saveEdit(newName) {
+    if (!newName.trim()) {
+        alert('Name cannot be empty');
+        return;
+    }
 
-                const { view, dateStr, roleId, signup } = this.editingSignup;
-                
-                if (useLocalStorage) {
-                    const signupIndex = this.signups[view][dateStr][roleId].indexOf(signup);
-                    if (signupIndex !== -1) {
-                        this.signups[view][dateStr][roleId][signupIndex].name = newName.trim();
-                        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                        this.createBackup();
-                        this.showNotification('Name updated successfully!');
-                    }
-                } else {
-                    try {
-                        const { error } = await supabase
-                            .from('volunteer_signups')
-                            .update({ volunteer_name: newName.trim() })
-                            .eq('id', signup.id);
-                        
-                        if (error) throw error;
-                        await this.loadSignups();
-                        this.showNotification('Name updated successfully!');
-                    } catch (e) {
-                        this.showNotification('Error updating name', 'error');
-                        console.error(e);
-                    }
-                }
-                
-                this.editingSignup = null;
-                this.render();
-            },
+    const { view, dateStr, roleId, signup } = this.editingSignup;
+    
+    try {
+        // Update in Google Sheets
+        await googleAPI.call('updateSignup', {
+            id: signup.id,
+            volunteer_name: newName.trim()
+        });
+        
+        // Reload to get updated data
+        await this.loadSignups();
+        this.showNotification('Name updated successfully!');
+        
+    } catch (e) {
+        console.error('Error updating:', e);
+        this.showNotification('Error updating name', 'error');
+    }
+    
+    this.editingSignup = null;
+    this.render();
+},
+
+
 
             validateData(data) {
                 if (!data || typeof data !== 'object') return false;
@@ -891,139 +893,92 @@ getDatesForPeriod() {
     }
     return dates;
 },
-        async loadSignups() {
-    if (useLocalStorage) {
+     async loadSignups() {
+    updateStatusBanner('Loading signups...', 'info');
+    
+    try {
+        // Get all signups from Google Sheets
+        const response = await googleAPI.call('getSignups');
+        const allData = response.data || [];
+        
+        console.log('📥 Loaded from Google Sheets:', allData.length, 'signups');
+        
+        // Convert to app format
+        this.signups = {};
+        allData.forEach(s => {
+            if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
+            if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
+            if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
+            
+            this.signups[s.roster_type][s.shift_date][s.role_id].push({
+                id: s.id,
+                name: s.volunteer_name
+            });
+        });
+        
+        // Also load settings
+        const settingsResponse = await googleAPI.call('getSettings');
+        const settings = settingsResponse.data || [];
+        
+        this.dateNotes = {};
+        this.giveawayDates = {};
+        
+        settings.forEach(setting => {
+            if (setting.setting_type === 'note') {
+                this.dateNotes[setting.setting_key] = setting.setting_value;
+            } else if (setting.setting_type === 'giveaway') {
+                this.giveawayDates[setting.setting_key] = setting.setting_value === 'true';
+            }
+        });
+        
+        // Cache to localStorage as backup
+        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+        localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+        localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+        
+        this.connectionStatus = 'connected';
+        this.createBackup();
+        
+    } catch (e) {
+        console.error('Error loading from Google Sheets:', e);
+        updateStatusBanner('Error connecting - using cached data', 'warning');
+        
+        // Try to load from localStorage cache
         const saved = localStorage.getItem('uts-roster');
         if (saved) {
             try {
-                const parsed = JSON.parse(saved);
-                if (this.validateData(parsed)) {
-                    this.signups = parsed;
-                    this.createBackup();
-                } else {
-                    console.error('Loaded data is corrupted. Attempting recovery...');
-                    this.restoreFromBackup();
-                }
-            } catch (e) {
-                console.error('Error parsing data:', e);
-                this.restoreFromBackup();
-            }
-        }
-        const savedNotes = localStorage.getItem('uts-date-notes');
-        if (savedNotes) {
-            try {
-                this.dateNotes = JSON.parse(savedNotes);
-            } catch (e) {
-                this.dateNotes = {};
-            }
-        }
-        const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
-        if (savedGiveaway) {
-            try {
-                this.giveawayDates = JSON.parse(savedGiveaway);
-            } catch (e) {
-                this.giveawayDates = {};
-            }
-        }
-        const savedEvents = localStorage.getItem('uts-special-events');
-        if (savedEvents) {
-            try {
-                this.specialEvents = JSON.parse(savedEvents);
-            } catch (e) {
-                this.specialEvents = [];
-            }
-        }
-    } else {
-        let retries = 3;
-        while (retries > 0) {
-            try {
-                let allData = [];
-                let from = 0;
-                const pageSize = 1000;
-                
-                let maxPages = 100;
-                
-                while (maxPages > 0) {
-                    maxPages--;
-                    
-                    const { data, error } = await supabase
-                        .from('volunteer_signups')
-                        .select('*')
-                        .range(from, from + pageSize - 1);
-                        
-                    if (error) throw error;
-                    if (!data || data.length === 0) break;
-                    
-                    allData = allData.concat(data);
-                    if (data.length < pageSize) break;
-                    from += pageSize;
-                }
-                
-                if (maxPages === 0) {
-                    console.warn('⚠️ Hit pagination safety limit! You may have incomplete data.');
-                    this.showNotification('Warning: Large dataset detected', 'warning');
-                }
-                
-                console.log('📥 Loaded from Supabase:', allData.length, 'signups (ALL data)');
-                
+                this.signups = JSON.parse(saved);
+            } catch (e2) {
                 this.signups = {};
-                allData.forEach(s => {
-                    if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
-                    if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
-                    if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
-                    this.signups[s.roster_type][s.shift_date][s.role_id].push({
-                        id: s.id,
-                        name: s.volunteer_name
-                    });
-                });
-                
-                if (!this.validateData(this.signups)) {
-                    throw new Error('Loaded data failed validation');
-                }
-                this.connectionStatus = 'connected';
-                this.lastSaveTime = new Date();
-                this.createBackup();
-                break;
-            } catch (e) {
-                retries--;
-                if (retries === 0) {
-                    console.error('Load failed after retries:', e);
-                    this.connectionStatus = 'error';
-                    this.restoreFromBackup();
-                } else {
-                    await new Promise(r => setTimeout(r, 1000));
-                }
             }
         }
+        
         const savedNotes = localStorage.getItem('uts-date-notes');
         if (savedNotes) {
             try {
                 this.dateNotes = JSON.parse(savedNotes);
-            } catch (e) {
+            } catch (e2) {
                 this.dateNotes = {};
             }
         }
+        
         const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
         if (savedGiveaway) {
             try {
                 this.giveawayDates = JSON.parse(savedGiveaway);
-            } catch (e) {
+            } catch (e2) {
                 this.giveawayDates = {};
             }
         }
-        const savedEvents = localStorage.getItem('uts-special-events');
-        if (savedEvents) {
-            try {
-                this.specialEvents = JSON.parse(savedEvents);
-            } catch (e) {
-                this.specialEvents = [];
-            }
-        }
+        
+        this.connectionStatus = 'error';
     }
+    
     if (this.isInitialized) {
         this.render();
     }
 },
+
 
             async loadSpecialEvents() {
                 if (useLocalStorage) {
@@ -1222,43 +1177,42 @@ getDatesForPeriod() {
                 await this.saveSpecialEvents();
                 this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
             },
+async saveNote(view, dateStr, note) {
+    const key = `${view}-${dateStr}`;
+},
 
-            async saveNote(view, dateStr, note) {
-                const key = `${view}-${dateStr}`;
-                if (note.trim()) {
-                    this.dateNotes[key] = note.trim();
-                } else {
-                    delete this.dateNotes[key];
-                }
-                
-                localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
-                
-                if (!useLocalStorage && supabase) {
-                    try {
-                        if (note.trim()) {
-                            await supabase.from('roster_settings').upsert({
-                                setting_type: 'note',
-                                setting_key: key,
-                                setting_value: note.trim(),
-                                updated_at: new Date().toISOString()
-                            }, { onConflict: 'setting_type,setting_key' });
-                        } else {
-                            await supabase.from('roster_settings').delete()
-                                .eq('setting_type', 'note')
-                                .eq('setting_key', key);
-                        }
-                    } catch (e) {
-                        console.error('Error syncing note:', e);
-                    }
-                }
-                
-                this.showNotification('Note saved');
-            },
+getNote(view, dateStr) {
+    const key = `${view}-${dateStr}`;
+    return this.dateNotes[key] || '';
+},
 
-            getNote(view, dateStr) {
-                const key = `${view}-${dateStr}`;
-                return this.dateNotes[key] || '';
-            },
+async addSignup() {
+    
+    try {
+        if (note.trim()) {
+            await googleAPI.call('saveSetting', {
+                setting_type: 'note',
+                setting_key: key,
+                setting_value: note.trim()
+            });
+            this.dateNotes[key] = note.trim();
+        } else {
+            await googleAPI.call('deleteSetting', {
+                setting_type: 'note',
+                setting_key: key
+            });
+            delete this.dateNotes[key];
+        }
+        
+        localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+        this.showNotification('Note saved');
+        
+    } catch (e) {
+        console.error('Error saving note:', e);
+        this.showNotification('Error saving note', 'error');
+    }
+},
+
 async addSignup() {
     if (!this.volunteerName.trim()) return alert('Please enter your name');
     const { view, dateStr, roleId } = this.selectedSlot;
@@ -1273,101 +1227,48 @@ async addSignup() {
         }
     }
     
-    const originalSignups = JSON.parse(JSON.stringify(this.signups));
-
-    if (useLocalStorage) {
-        try {
-            if (!this.signups[view]) this.signups[view] = {};
-            if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
-            if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-            this.signups[view][dateStr][roleId].push({ name: this.volunteerName.trim() });
-            if (!this.validateData(this.signups)) {
-                throw new Error('Data validation failed');
-            }
-            localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-            this.createBackup();
-            this.showNotification('✓ Signed up successfully!');
-        } catch (e) {
-            console.error('Error during signup:', e);
-            this.signups = originalSignups;
-            this.showNotification('Error signing up: ' + e.message, 'error');
-            return;
-        }
-    } else {
-        let retries = 3;
-        while (retries > 0) {
-            try {
-                const { data, error } = await supabase.from('volunteer_signups').insert({
-                    roster_type: view,
-                    shift_date: dateStr,
-                    role_id: roleId,
-                    volunteer_name: this.volunteerName.trim()
-                }).select();
-                if (error) throw error;
-                await this.loadSignups();
-                this.showNotification('✓ Signed up successfully!');
-                break;
-            } catch (e) {
-                retries--;
-                if (retries === 0) {
-                    this.showNotification('Error signing up. Please try again.', 'error');
-                    return;
-                }
-                await new Promise(r => setTimeout(r, 1000));
-            }
-        }
+    try {
+        // Add to Google Sheets
+        const response = await googleAPI.call('addSignup', {
+            roster_type: view,
+            shift_date: dateStr,
+            role_id: roleId,
+            volunteer_name: this.volunteerName.trim()
+        });
+        
+        // Reload to get updated data
+        await this.loadSignups();
+        this.showNotification('✓ Signed up successfully!');
+        
+    } catch (e) {
+        console.error('Error signing up:', e);
+        this.showNotification('Error signing up. Please try again.', 'error');
+        return;
     }
+    
     this.showModal = false;
     this.volunteerName = '';
     this.render();
 },
-
 async removeSignup(view, dateStr, roleId, signup) {
     if (!confirm(`Remove ${signup.name}?`)) return;
-    const originalSignups = JSON.parse(JSON.stringify(this.signups));
     
-    this.createBackup();
-
-    if (useLocalStorage) {
-        try {
-            this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => {
-                if (signup.id) {
-                    return s.id !== signup.id;
-                } else {
-                    return s.name !== signup.name;
-                }
-            });
-            
-            if (!this.validateData(this.signups)) {
-                throw new Error('Data validation failed');
-            }
-            localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-            this.createBackup();
-            this.showNotification('✓ Removed successfully');
-        } catch (e) {
-            this.signups = originalSignups;
-            this.showNotification('Error removing: ' + e.message, 'error');
-            return;
-        }
-    } else {
-        let retries = 3;
-        while (retries > 0) {
-            try {
-                const { error } = await supabase.from('volunteer_signups').delete().eq('id', signup.id);
-                if (error) throw error;
-                await this.loadSignups();
-                this.showNotification('✓ Removed successfully');
-                break;
-            } catch (e) {
-                retries--;
-                if (retries === 0) {
-                    this.showNotification('Error removing. Please try again.', 'error');
-                    return;
-                }
-                await new Promise(r => setTimeout(r, 1000));
-            }
-        }
+    try {
+        // Remove from Google Sheets
+        await googleAPI.call('removeSignup', {
+            id: signup.id
+        });
+        
+        // Reload to get updated data
+        await this.loadSignups();
+        this.showNotification('✓ Removed successfully');
+        
+    } catch (e) {
+        console.error('Error removing:', e);
+        this.showNotification('Error removing. Please try again.', 'error');
+        return;
     }
+    
     this.render();
 },
 
@@ -2765,9 +2666,16 @@ return `
                 `;
             }
         };
+function updateStatusBanner(message, type) {
+    const banner = document.getElementById('statusBanner');
+    if (banner) {
+        banner.textContent = message;
+        banner.className = `status-banner ${type || 'info'} no-print`;
+    }
+    console.log(`[${(type || 'info').toUpperCase()}] ${message}`);
+}
 
         app.init();
     </script>
 </body>
 </html>
-

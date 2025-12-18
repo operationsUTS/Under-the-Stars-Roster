@@ -1715,55 +1715,43 @@ pushState() {
     
     history.pushState(state, title, window.location.pathname);
 },
-           render() {
-    try {
-        const appEl = document.getElementById('app');
-        if (!appEl) return;
+        render() {
+                try {
+                    const appEl = document.getElementById('app');
+                    if (!appEl) return;
 
-        if (this.isLoading) {
-            appEl.innerHTML = `
-                <div class="min-h-screen flex items-center justify-center">
-                    <div class="text-center">
-                        <div class="loading-spinner mx-auto mb-4"></div>
-                        <p class="text-gray-600 text-lg mb-4">Loading roster...</p>
-                    </div>
-                </div>
-            `;
-            return;
-        }
+                    if (this.isLoading) {
+                        appEl.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="loading-spinner mx-auto mb-4"></div>
+                                    <p class="text-gray-600 text-lg mb-4">Loading roster...</p>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
 
-        if (this.showMySignups) {
-            appEl.innerHTML = this.renderMySignups();
-        } else if (this.currentView === 'welcome') {
-            appEl.innerHTML = this.renderWelcome();
-        } else if (this.currentView === 'admin') {
-            appEl.innerHTML = this.renderAdmin();
-        } else {
-            // This is the main view volunteers see
-            appEl.innerHTML = this.renderRoster();
-        }
-    } catch (error) {
-        console.error("Render Error:", error);
-        document.getElementById('app').innerHTML = `
-            <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg mt-10 border-t-4 border-red-500">
-                <h2 class="text-xl font-bold text-gray-900">⚠️ Load Error</h2>
-                <p class="text-gray-500 text-sm mt-2">Your phone is having trouble reading the date format.</p>
-                <button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded w-full">Try Refreshing</button>
-                <div class="text-xs text-red-400 mt-4 p-2 bg-gray-50 rounded">Error details: ${error.message}</div>
-            </div>
-        `;
-    }
-},
-                if (this.showMySignups) {
-                    appEl.innerHTML = this.renderMySignups();
-                } else if (this.currentView === 'welcome') {
-                    appEl.innerHTML = this.renderWelcome();
-                } else if (this.currentView === 'admin') {
-                    appEl.innerHTML = this.renderAdmin();
-                } else {
-                    appEl.innerHTML = this.renderRoster();
+                    if (this.showMySignups) {
+                        appEl.innerHTML = this.renderMySignups();
+                    } else if (this.currentView === 'welcome') {
+                        appEl.innerHTML = this.renderWelcome();
+                    } else if (this.currentView === 'admin') {
+                        appEl.innerHTML = this.renderAdmin();
+                    } else {
+                        appEl.innerHTML = this.renderRoster();
+                    }
+                } catch (error) {
+                    console.error("Render Error:", error);
+                    document.getElementById('app').innerHTML = `
+                        <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg mt-10 border-t-4 border-red-500">
+                            <h2 class="text-xl font-bold text-gray-900">⚠️ Load Error</h2>
+                            <p class="text-gray-500 text-sm mt-2">Error during display. Please refresh.</p>
+                            <div class="text-xs text-red-400 mt-4 p-2 bg-gray-50 rounded">${error.message}</div>
+                        </div>
+                    `;
                 }
-            },
+            }, // Make sure there is ONLY ONE closing bracket and comma here
 
             renderMySignups() {
                 return `

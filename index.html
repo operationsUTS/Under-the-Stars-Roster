@@ -228,8 +228,23 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
             onerror="console.error('Failed to load Supabase library'); window.supabaseLoadFailed = true;"></script>
-    <script>
-   const APP_VERSION = '20241219-001';
+<script>
+    function formatSafeDate(dateStr) {
+        if (!dateStr) return "No Date";
+        try {
+            // Fixes "Invalid Date" on mobile by replacing dashes with slashes
+            var normalized = dateStr.toString().replace(/-/g, "/");
+            var d = new Date(normalized);
+            if (isNaN(d.getTime())) return "Invalid Date";
+            
+            // Standard NZ format: DD/MM/YYYY
+            return d.toLocaleDateString('en-NZ');
+        } catch (e) {
+            return "Invalid Date";
+        }
+    }
+
+    const APP_VERSION = '20241219-001';
         console.log('🚀 App version:', APP_VERSION);
         
         const SUPABASE_URL = 'https://evhjncobivtsxeeqvlue.supabase.co';
@@ -449,12 +464,10 @@ getNextUpcomingDate(view = null) {
                                     const role = this.roles[rosterType]?.find(r => r.id === roleId);
                                     const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
                                                       rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
-                                    const [year, month, day] = dateStr.split('-').map(Number);
-                                    const date = new Date(year, month - 1, day);
-                                    mySignups.push({
-                                        date: dateStr,
-                                        dateLabel: date.toLocaleDateString('en-NZ', { 
-                                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
+                             mySignups.push({
+    date: dateStr,
+    dateLabel: formatSafeDate(dateStr), // Uses the safety wrapper
+    roster: rosterName,
                                         }),
                                         roster: rosterName,
                                         role: role?.name || roleId,
@@ -843,10 +856,10 @@ getDatesForPeriod() {
                     const wed = new Date(period.year, month - 1, day);
                     const thurs = new Date(period.year, month - 1, day + 1);
                     
-                    dates.push({
-                        date: dateStr,
-                        label: `${wed.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} - ${thurs.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}`
-                    });
+                  dates.push({ 
+    date: dateStr, 
+    label: `${formatSafeDate(dateStr)} - ${formatSafeDate(thurs.toISOString().split('T')[0])}` 
+});
                 }
             }
         });

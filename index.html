@@ -1346,7 +1346,7 @@ generatePeriods() {
                                         Additional Weekly Tasks →
                                     </button>
                                     
-                                    ${this.specialEvents.filter(e => e.visible).map(event => `
+                                 ${(this.specialEvents || []).filter(e => e.visible).map(event => `
                                         <button onclick="app.navigateTo('${event.id}');"
                                                 class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
                                             ${event.name} →

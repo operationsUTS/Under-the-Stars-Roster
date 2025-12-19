@@ -816,36 +816,7 @@ generatePeriods() {
         this.render();
     }
 },
-    try {
-        const response = await googleAPI.call('addSignup', {
-            roster_type: view,
-            shift_date: dateStr,
-            role_id: roleId,
-            volunteer_name: this.volunteerName.trim()
-        });
         
-        // IMPORTANT: Wait for reload to complete
-        await this.loadSignups();
-        
-        this.showModal = false;
-        this.volunteerName = '';
-        this.isLoading = false;
-        
-        // Render AFTER everything is loaded
-        this.render();
-        
-        // Show success message AFTER render
-        setTimeout(() => {
-            this.showNotification('✓ Signed up successfully!');
-        }, 100);
-        
-    } catch (e) {
-        console.error('Error signing up:', e);
-        this.isLoading = false;
-        this.showNotification('Error signing up. Please try again.', 'error');
-        this.render();
-    }
-},
        async removeSignup(view, dateStr, roleId, signup) {
     if (!confirm(`Remove ${signup.name}?`)) return;
     

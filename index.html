@@ -263,35 +263,49 @@
 
         const app = {
             currentView: 'welcome',
-            selectedPeriod: 'oct-dec-2025',
-            showModal: false,
-            selectedSlot: null,
-            volunteerName: '',
-            signups: {},
-            specialEvents: [],
-            editingEvent: null,
-            connectionStatus: 'checking',
-            lastSaveTime: null,
-            backupCount: 5,
-            isInitialized: false,
-            isAdmin: false,
-            adminView: 'dashboard',
-            dateNotes: {},
-            giveawayDates: {},
-            showMySignups: false,
-            searchName: '',
-            isLoading: false,
-            editingSignup: null,
-            collapsedMonths: {},
+        selectedPeriod: null, // Will be set by generatePeriods()
+periods: [],
 
-            periods: [
-                { id: 'oct-dec-2025', label: 'October - December 2025', months: [10,11,12], year: 2025 },
-                { id: 'jan-mar-2026', label: 'January - March 2026', months: [1,2,3], year: 2026 },
-                { id: 'apr-jun-2026', label: 'April - June 2026', months: [4,5,6], year: 2026 },
-                { id: 'jul-sep-2026', label: 'July - September 2026', months: [7,8,9], year: 2026 },
-                { id: 'oct-dec-2026', label: 'October - December 2026', months: [10,11,12], year: 2026 },
-            ],
-
+// Generate periods dynamically starting from current month
+generatePeriods() {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    
+    const periods = [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Generate quarters starting from current month, going forward 12 months
+    for (let offset = 0; offset < 12; offset += 3) {
+        let startMonth = currentMonth + offset;
+        let year = currentYear;
+        
+        // Handle year rollover
+        while (startMonth > 12) {
+            startMonth -= 12;
+            year++;
+        }
+        
+        const months = [];
+        for (let i = 0; i < 3; i++) {
+            let month = startMonth + i;
+            let thisYear = year;
+            if (month > 12) {
+                month -= 12;
+                thisYear++;
+            }
+            months.push(month);
+        }
+        
+        const label = `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${year}`;
+        const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${year}`;
+        
+        periods.push({ id, label, months: months.slice(0, 3), year });
+    }
+    
+    this.periods = periods;
+    this.selectedPeriod = periods[0].id; // Default to first (current) period
+},
             roles: {
                 'thursday-hall': [
                     { id: 'managers', name: 'Managers', time: '9:45am-1:30pm', capacity: 2 },
@@ -566,7 +580,8 @@
                 setTimeout(() => notif.remove(), duration);
             },
 
-            async init() {
+            async init() 
+            this.generatePeriods();
                 this.isLoading = true;
                 this.render();
                 

@@ -2,102 +2,1855 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>UTS Volunteer Roster</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Under the Stars Volunteer Roster</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: ui-sans-serif, system-ui; background: #f8fafc; }
-        .active-view { background: #1e293b !important; color: white !important; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .print-full-width { max-width: 100% !important; }
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto !important;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .table-container {
+                overflow-x: scroll !important;
+                -webkit-overflow-scrolling: touch;
+                display: block !important;
+                width: 100vw;
+                margin-left: -1rem;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .table-container table {
+                width: auto !important;
+                min-width: 900px !important;
+                display: table !important;
+            }
+            
+            .role-cell {
+                min-width: 150px !important;
+            }
+            
+            th, td {
+                padding: 0.5rem !important;
+                font-size: 0.75rem !important;
+            }
+        }
+
+        .giveaway-disabled {
+            background-color: #f9fafb;
+            color: #9ca3af;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .date-past { opacity: 0.4; background-color: #f3f4f6 !important; }
+        .date-today { background-color: #fef3c7 !important; border-left: 4px solid #f59e0b; }
+        .date-future { }
+        .date-next-shift { 
+            background: linear-gradient(135deg, #bfdbfe 0%, #dbeafe 100%) !important;
+            border: 4px solid #2563eb !important;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+        
+        .next-shift-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+            animation: pulse-glow 2s ease-in-out infinite;
+            margin-right: 4px;
+            white-space: nowrap;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+        
+        .coverage-excellent { background-color: #dcfce7; }
+        .coverage-good { background-color: #fef9c3; }
+        .coverage-poor { background-color: #fee2e2; }
+        
+        .notification-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .edit-mode input {
+            width: 100%;
+            padding: 2px 4px;
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+        }
+        
+        .edit-icon {
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: #6b7280;
+        }
+        
+        .volunteer-item:hover .edit-icon {
+            opacity: 1;
+        }
+
+        .edit-icon:hover {
+            color: #3b82f6;
+        }
+        
+        .month-section {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .month-header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+        
+        .month-header:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+        }
+        
+        .month-header .chevron {
+            transition: transform 0.3s;
+            font-size: 1.5rem;
+        }
+        
+        .month-header.collapsed .chevron {
+            transform: rotate(-90deg);
+        }
+        
+        .month-content {
+            max-height: 10000px;
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        
+        .month-content.collapsed {
+            max-height: 0;
+        }
+
+        .table-container::after {
+            content: '← Scroll to see all roles →';
+            position: sticky;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #4f46e5, transparent);
+            color: white;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        @media (min-width: 768px) {
+            .table-container::after {
+                display: none;
+            }
+        }
     </style>
 </head>
-<body class="p-4 md:p-10">
-    <div id="app" class="max-w-6xl mx-auto">
-        <div class="text-center p-20 font-bold text-slate-400">PULLING DATA...</div>
-    </div>
+<body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+    <div id="app"></div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuVlgfsP_98f5Aafo1ghZyVYhSfEwk5uLejtQx-PdOfPDhq3G1A2YDxp3l0UfVcBqG/exec';
+        const APP_VERSION = '20241219-COMPLETE';
+        console.log('🚀 App version:', APP_VERSION);
+        
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuVlgfsP_98f5Aafo1ghZyVYhSfEwk5uLejtQx-PdOfPDhq3G1A2YDxp3l0UfVcBqG/exec';
+        const ADMIN_PASSWORD = 'UTS2025Admin';
 
-        const state = { view: 'thursday-hall', data: [] };
+        function formatSafeDate(dateStr) {
+            if (!dateStr) return "No Date";
+            try {
+                var normalized = dateStr.toString().replace(/-/g, "/");
+                var d = new Date(normalized);
+                if (isNaN(d.getTime())) return "Invalid Date";
+                return d.toLocaleDateString('en-NZ');
+            } catch (e) {
+                return "Invalid Date";
+            }
+        }
 
-        const roles = {
-            'thursday-hall': ['managers', 'hall-help', 'drinks', 'dishes', 'laundry'],
-            'saturday-hall': ['managers', 'hall-help-1', 'hall-help-2', 'drinks']
+        const googleAPI = {
+            async call(action, params = {}) {
+                const url = new URL(GOOGLE_SCRIPT_URL);
+                url.searchParams.append('action', action);
+                
+                for (let key in params) {
+                    url.searchParams.append(key, params[key]);
+                }
+                
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        throw new Error(data.error || 'Unknown error');
+                    }
+                    
+                    return data;
+                } catch (e) {
+                    console.error('Google API Error:', e);
+                    throw e;
+                }
+            }
         };
 
-        async function init() {
-            try {
-                const r = await fetch(SCRIPT_URL + '?action=getSignups');
-                const j = await r.json();
-                // Map the data to ensure we handle any column name weirdness
-                state.data = (j.data || []).map(row => ({
-                    date: String(row.shift_date || '').split('T')[0],
-                    role: String(row.role_id || '').toLowerCase().trim(),
-                    type: String(row.roster_type || '').toLowerCase().trim(),
-                    name: row.volunteer_name || row.Name || 'Unknown'
-                }));
-                render();
-            } catch (e) { document.getElementById('app').innerHTML = "Check Script Connection."; }
-        }
+        const app = {
+            currentView: 'welcome',
+            selectedPeriod: 'oct-dec-2025',
+            showModal: false,
+            selectedSlot: null,
+            volunteerName: '',
+            signups: {},
+            specialEvents: [],
+            editingEvent: null,
+            connectionStatus: 'checking',
+            lastSaveTime: null,
+            backupCount: 5,
+            isInitialized: false,
+            isAdmin: false,
+            adminView: 'dashboard',
+            dateNotes: {},
+            giveawayDates: {},
+            showMySignups: false,
+            searchName: '',
+            isLoading: false,
+            editingSignup: null,
+            collapsedMonths: {},
 
-        function render() {
-            const root = document.getElementById('app');
-            const activeRoles = roles[state.view];
-            const months = [10, 11, 12]; // Oct, Nov, Dec 2025
+            periods: [
+                { id: 'oct-dec-2025', label: 'October - December 2025', months: [10,11,12], year: 2025 },
+                { id: 'jan-mar-2026', label: 'January - March 2026', months: [1,2,3], year: 2026 },
+                { id: 'apr-jun-2026', label: 'April - June 2026', months: [4,5,6], year: 2026 },
+                { id: 'jul-sep-2026', label: 'July - September 2026', months: [7,8,9], year: 2026 },
+                { id: 'oct-dec-2026', label: 'October - December 2026', months: [10,11,12], year: 2026 },
+            ],
 
-            let html = `
-                <div class="flex gap-2 mb-8">
-                    <button onclick="state.view='thursday-hall';render()" class="p-4 border rounded-xl font-bold bg-white ${state.view==='thursday-hall'?'active-view':''}">THURSDAY</button>
-                    <button onclick="state.view='saturday-hall';render()" class="p-4 border rounded-xl font-bold bg-white ${state.view==='saturday-hall'?'active-view':''}">SATURDAY</button>
-                </div>
-            `;
+            roles: {
+                'thursday-hall': [
+                    { id: 'managers', name: 'Managers', time: '9:45am-1:30pm', capacity: 2 },
+                    { id: 'hall-help', name: 'Hall Help', time: '10:00am-1:30pm', capacity: 4 },
+                    { id: 'drinks', name: 'Drinks Trolley', time: '11:15am-1:30pm', capacity: 1 },
+                    { id: 'dishes', name: 'Dishes', time: '11:30am-1:30pm', capacity: 1 },
+                    { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
+                    { id: 'giveaway', name: 'Giveaway Table', time: '10:45am-12:45pm', capacity: 2 },
+                ],
+                'saturday-hall': [
+                    { id: 'managers', name: 'Managers', time: '2:45pm-6:30pm', capacity: 2 },
+                    { id: 'hall-help-1', name: 'Hall Help - Shift 1', time: '3:15pm-6:30pm', capacity: 3 },
+                    { id: 'hall-help-2', name: 'Hall Help - Shift 2', time: '4:30pm-6:30pm', capacity: 2 },
+                    { id: 'drinks', name: 'Drinks Trolley', time: '4:00pm-6:30pm', capacity: 1 },
+                    { id: 'dishes', name: 'Dishes', time: '4:30pm-6:30pm', capacity: 1 },
+                    { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
+                    { id: 'giveaway', name: 'Giveaway Table', time: '3:45pm-5:45pm', capacity: 2 },
+                ],
+                'weekly-tasks': [
+                    { id: 'wed-pickup', name: 'Wed Bakers Delight', time: '~3:45pm', capacity: 1 },
+                    { id: 'thurs-pickup', name: 'Thurs Bakers Delight', time: '4:50pm', capacity: 1 },
+                    { id: 'cheesecake', name: 'Cheesecake Shop', time: '3-6pm Fri', capacity: 1 },
+                ]
+            },
 
-            months.forEach(m => {
-                const monthLabel = new Date(2025, m-1, 1).toLocaleString('default', { month: 'long' });
-                html += `
-                    <div class="bg-white rounded-2xl shadow-sm border mb-10 overflow-hidden">
-                        <div class="bg-slate-800 text-white p-4 font-bold uppercase text-[10px] tracking-widest">${monthLabel} 2025</div>
-                        <table class="w-full text-left border-collapse text-sm">
-                            <thead>
-                                <tr class="bg-slate-50 border-b text-[10px] text-slate-400 font-bold uppercase">
-                                    <th class="p-4 w-28">Date</th>
-                                    ${activeRoles.map(r => `<th class="p-4 border-l">${r}</th>`).join('')}
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
+            toggleMonth(monthKey) {
+                this.collapsedMonths[monthKey] = !this.collapsedMonths[monthKey];
+                this.render();
+            },
 
-                for (let d = 1; d <= 31; d++) {
-                    const dObj = new Date(2025, m-1, d);
-                    if (dObj.getMonth() !== m-1) break;
+            getVisibleRoles(view) {
+                const event = this.specialEvents.find(e => e.id === view);
+                if (event) {
+                    return event.roles;
+                }
+                
+                const allRoles = this.roles[view] || [];
+                return allRoles.filter(role => {
+                    if (role.id !== 'giveaway') return true;
+                    return this.hasAnyGiveaway(view);
+                });
+            },
+
+            hasAnyGiveaway(view) {
+                const dates = this.getDatesForPeriod();
+                return dates.some(d => this.isGiveawayEnabled(view, d.date));
+            },
+
+            isGiveawayEnabled(view, dateStr) {
+                const key = `${view}-${dateStr}`;
+                return this.giveawayDates[key] === true;
+            },
+
+            async toggleGiveaway(view, dateStr) {
+                const key = `${view}-${dateStr}`;
+                const newValue = !this.giveawayDates[key];
+                
+                this.giveawayDates[key] = newValue;
+                
+                try {
+                    await googleAPI.call('saveSetting', {
+                        setting_type: 'giveaway',
+                        setting_key: key,
+                        setting_value: newValue ? 'true' : 'false'
+                    });
                     
-                    const targetDay = state.view === 'thursday-hall' ? 4 : 6;
-                    if (dObj.getDay() === targetDay) {
-                        const dateStr = dObj.toISOString().split('T')[0];
-                        html += `<tr class="border-b last:border-0">
-                            <td class="p-4 font-bold border-r bg-slate-50/30">${dateStr}</td>`;
+                    if (!newValue) {
+                        if (this.signups[view] && this.signups[view][dateStr] && this.signups[view][dateStr]['giveaway']) {
+                            const giveawaySignups = this.signups[view][dateStr]['giveaway'];
+                            
+                            for (let signup of giveawaySignups) {
+                                if (signup.id) {
+                                    await googleAPI.call('removeSignup', { id: signup.id });
+                                }
+                            }
+                            
+                            this.signups[view][dateStr]['giveaway'] = [];
+                        }
+                    }
+                    
+                    localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+                    this.showNotification(newValue ? 'Giveaway table enabled' : 'Giveaway table disabled');
+                    
+                } catch (e) {
+                    console.error('Error toggling giveaway:', e);
+                    this.showNotification('Error saving giveaway setting', 'error');
+                }
+                
+                this.render();
+            },
 
-                        activeRoles.forEach(role => {
-                            // FLEXIBLE MATCHING
-                            const matches = state.data.filter(row => 
-                                row.date === dateStr && 
-                                row.role.includes(role.split('-')[0]) && 
-                                row.type.includes(state.view.split('-')[0])
-                            );
-
-                            html += `<td class="p-2 border-l align-top min-w-[120px]">
-                                ${matches.map(m => `<div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-[10px] mb-1">${m.name}</div>`).join('')}
-                                ${matches.length === 0 ? '<div class="text-[10px] text-slate-300 p-2">+ OPEN</div>' : ''}
-                            </td>`;
-                        });
-                        html += `</tr>`;
+            getNextUpcomingDate(view = null) {
+                const targetView = view || this.currentView;
+                
+                if (targetView === 'weekly-tasks') {
+                    return null;
+                }
+                
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                
+                const period = this.periods.find(p => p.id === this.selectedPeriod);
+                if (!period) {
+                    return null;
+                }
+                
+                const dates = this.getDatesForPeriod();
+                
+                for (let d of dates) {
+                    const [year, month, day] = d.date.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    date.setHours(12,0,0,0);
+                    if (date >= today) {
+                        return d.date;
                     }
                 }
-                html += `</tbody></table></div>`;
-            });
-            root.innerHTML = html;
-        }
+                return null;
+            },
 
-        init();
-    </script>
-</body>
-</html>
+            getDateClass(dateStr) {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+
+                if (!dateStr || typeof dateStr !== 'string') return 'date-future';
+                const parts = dateStr.split('-');
+                if (parts.length !== 3) return 'date-future';
+                
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]);
+                const day = parseInt(parts[2]);
+                
+                const date = new Date(year, month - 1, day);
+                date.setHours(0,0,0,0);
+                
+                const nextShift = this.getNextUpcomingDate(this.currentView);
+                
+                if (dateStr === nextShift) return 'date-next-shift';
+                if (date < today) return 'date-past';
+                if (date.getTime() === today.getTime()) return 'date-today';
+                return 'date-future';
+            },
+
+            getCoverageClass(filled, total) {
+                const percentage = (filled / total) * 100;
+                if (percentage >= 90) return 'coverage-excellent';
+                if (percentage >= 60) return 'coverage-good';
+                return 'coverage-poor';
+            },
+
+            getMySignups() {
+                if (!this.searchName.trim()) {
+                    alert('Please enter your name to find your signups');
+                    return;
+                }
+                
+                const name = this.searchName.trim().toLowerCase();
+                const mySignups = [];
+                
+                for (let rosterType in this.signups) {
+                    for (let dateStr in this.signups[rosterType]) {
+                        for (let roleId in this.signups[rosterType][dateStr]) {
+                            const volunteers = this.signups[rosterType][dateStr][roleId];
+                            volunteers.forEach(v => {
+                                if (v.name.toLowerCase().includes(name)) {
+                                    const role = this.roles[rosterType]?.find(r => r.id === roleId);
+                                    const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
+                                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
+                                    
+                                    mySignups.push({
+                                        date: dateStr,
+                                        dateLabel: formatSafeDate(dateStr), 
+                                        roster: rosterName,
+                                        role: role?.name || roleId,
+                                        time: role?.time || ''
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                mySignups.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                if (mySignups.length === 0) {
+                    this.showNotification(`No signups found for "${this.searchName}"`, 'warning');
+                } else {
+                    this.showMySignups = true;
+                    this.mySignupsList = mySignups;
+                    this.render();
+                }
+            },
+
+            startEdit(view, dateStr, roleId, signup) {
+                this.editingSignup = { view, dateStr, roleId, signup, originalName: signup.name };
+                this.render();
+            },
+
+            cancelEdit() {
+                this.editingSignup = null;
+                this.render();
+            },
+
+            async saveEdit(newName) {
+                if (!newName.trim()) {
+                    alert('Name cannot be empty');
+                    return;
+                }
+
+                const { view, dateStr, roleId, signup } = this.editingSignup;
+                
+                try {
+                    await googleAPI.call('updateSignup', {
+                        id: signup.id,
+                        volunteer_name: newName.trim()
+                    });
+                    
+                    await this.loadSignups();
+                    this.showNotification('Name updated successfully!');
+                    
+                } catch (e) {
+                    console.error('Error updating:', e);
+                    this.showNotification('Error updating name', 'error');
+                }
+                
+                this.editingSignup = null;
+                this.render();
+            },
+
+            createBackup() {
+                try {
+                    const timestamp = new Date().toISOString();
+                    const backup = { 
+                        data: this.signups, 
+                        timestamp: timestamp, 
+                        version: '1.0' 
+                    };
+                    
+                    const backups = this.getBackups();
+                    backups.push(backup);
+                    if (backups.length > this.backupCount) backups.shift();
+                    localStorage.setItem('uts-roster-backups', JSON.stringify(backups));
+                    console.log('Backup created (localStorage):', timestamp);
+                    
+                } catch (e) {
+                    console.error('Backup creation failed:', e);
+                }
+            },
+
+            getBackups() {
+                try {
+                    const stored = localStorage.getItem('uts-roster-backups');
+                    if (!stored) return [];
+                    const backups = JSON.parse(stored);
+                    return Array.isArray(backups) ? backups : [];
+                } catch (e) {
+                    return [];
+                }
+            },
+
+            showNotification(message, type = 'success') {
+                if (this.currentView === 'welcome' && !this.isInitialized) {
+                    console.log('Notification suppressed on welcome:', message);
+                    return;
+                }
+                const notif = document.createElement('div');
+                notif.className = `notification-enter fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                    type === 'success' ? 'bg-green-600' : type === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
+                } text-white font-semibold`;
+                notif.textContent = message;
+                document.body.appendChild(notif);
+                const duration = type === 'success' ? 5000 : 3000;
+                setTimeout(() => notif.remove(), duration);
+            },
+
+            async init() {
+                this.isLoading = true;
+                this.render();
+                
+                await this.loadSignups();
+                this.loadSpecialEvents();
+                
+                this.isLoading = false;
+                this.isInitialized = true;
+                this.render();
+                
+                setInterval(() => this.createBackup(), 300000);
+                this.createBackup();
+            },
+
+            async loadSignups() {
+                try {
+                    const response = await googleAPI.call('getSignups');
+                    const allData = response.data || [];
+                    
+                    console.log('📥 Loaded from Google Sheets:', allData.length, 'signups');
+                    
+                    this.signups = {};
+                    allData.forEach(s => {
+                        if (!this.signups[s.roster_type]) this.signups[s.roster_type] = {};
+                        if (!this.signups[s.roster_type][s.shift_date]) this.signups[s.roster_type][s.shift_date] = {};
+                        if (!this.signups[s.roster_type][s.shift_date][s.role_id]) this.signups[s.roster_type][s.shift_date][s.role_id] = [];
+                        
+                        this.signups[s.roster_type][s.shift_date][s.role_id].push({
+                            id: s.id,
+                            name: s.volunteer_name
+                        });
+                    });
+                    
+                    const settingsResponse = await googleAPI.call('getSettings');
+                    const settings = settingsResponse.data || [];
+                    
+                    this.dateNotes = {};
+                    this.giveawayDates = {};
+                    
+                    settings.forEach(setting => {
+                        if (setting.setting_type === 'note') {
+                            this.dateNotes[setting.setting_key] = setting.setting_value;
+                        } else if (setting.setting_type === 'giveaway') {
+                            this.giveawayDates[setting.setting_key] = setting.setting_value === 'true';
+                        }
+                    });
+                    
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+                    localStorage.setItem('uts-giveaway-dates', JSON.stringify(this.giveawayDates));
+                    
+                    this.connectionStatus = 'connected';
+                    this.createBackup();
+                    
+                } catch (e) {
+                    console.error('Error loading from Google Sheets:', e);
+                    
+                    const saved = localStorage.getItem('uts-roster');
+                    if (saved) {
+                        try {
+                            this.signups = JSON.parse(saved);
+                        } catch (e2) {
+                            this.signups = {};
+                        }
+                    }
+                    
+                    const savedNotes = localStorage.getItem('uts-date-notes');
+                    if (savedNotes) {
+                        try {
+                            this.dateNotes = JSON.parse(savedNotes);
+                        } catch (e2) {
+                            this.dateNotes = {};
+                        }
+                    }
+                    
+                    const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
+                    if (savedGiveaway) {
+                        try {
+                            this.giveawayDates = JSON.parse(savedGiveaway);
+                        } catch (e2) {
+                            this.giveawayDates = {};
+                        }
+                    }
+                    
+                    this.connectionStatus = 'error';
+                }
+                
+                if (this.isInitialized) {
+                    this.render();
+                }
+            },
+
+            loadSpecialEvents() {
+                const savedEvents = localStorage.getItem('uts-special-events');
+                if (savedEvents) {
+                    try {
+                        this.specialEvents = JSON.parse(savedEvents);
+                    } catch (e) {
+                        console.error('Error parsing special events:', e);
+                        this.specialEvents = [];
+                    }
+                }
+            },
+
+            async saveSpecialEvents() {
+                localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
+                this.createBackup();
+            },
+
+            async createSpecialEvent(name, dates, roles, visible = true) {
+                const event = {
+                    id: 'event-' + Date.now().toString(),
+                    name: name.trim(),
+                    dates: dates,
+                    roles: roles,
+                    visible: visible,
+                    created: new Date().toISOString()
+                };
+                this.specialEvents.push(event);
+                
+                this.signups[event.id] = {};
+                dates.forEach(dateStr => {
+                    this.signups[event.id][dateStr] = {};
+                    roles.forEach(role => {
+                        this.signups[event.id][dateStr][role.id] = [];
+                    });
+                });
+                
+                await this.saveSpecialEvents();
+                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                this.showNotification(`Event "${name}" created!`);
+                return event.id;
+            },
+
+            async deleteSpecialEvent(eventId) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                if (!confirm(`Delete event "${event.name}"? This will remove all volunteer signups for this event.`)) return;
+                
+                this.specialEvents = this.specialEvents.filter(e => e.id !== eventId);
+                
+                delete this.signups[eventId];
+                
+                await this.saveSpecialEvents();
+                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                this.showNotification('Event deleted');
+            },
+
+            async toggleEventVisibility(eventId) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                event.visible = !event.visible;
+                await this.saveSpecialEvents();
+                this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
+            },
+
+            async saveNote(view, dateStr, note) {
+                const key = `${view}-${dateStr}`;
+                
+                try {
+                    if (note.trim()) {
+                        await googleAPI.call('saveSetting', {
+                            setting_type: 'note',
+                            setting_key: key,
+                            setting_value: note.trim()
+                        });
+                        this.dateNotes[key] = note.trim();
+                    } else {
+                        await googleAPI.call('deleteSetting', {
+                            setting_type: 'note',
+                            setting_key: key
+                        });
+                        delete this.dateNotes[key];
+                    }
+                    
+                    localStorage.setItem('uts-date-notes', JSON.stringify(this.dateNotes));
+                    this.showNotification('Note saved');
+                    
+                } catch (e) {
+                    console.error('Error saving note:', e);
+                    this.showNotification('Error saving note', 'error');
+                }
+            },
+
+            getNote(view, dateStr) {
+                const key = `${view}-${dateStr}`;
+                return this.dateNotes[key] || '';
+            },
+
+            async addSignup() {
+                if (!this.volunteerName.trim()) return alert('Please enter your name');
+                const { view, dateStr, roleId } = this.selectedSlot;
+                
+                const role = this.getVisibleRoles(view).find(r => r.id === roleId);
+                const currentSignups = this.getSignups(view, dateStr, roleId);
+                
+                if (currentSignups.length >= role.capacity) {
+                    const override = confirm(`⚠️ This role is at full capacity (${role.capacity}/${role.capacity}).\n\nDo you want to add an extra volunteer anyway?`);
+                    if (!override) {
+                        return;
+                    }
+                }
+                
+                try {
+                    const response = await googleAPI.call('addSignup', {
+                        roster_type: view,
+                        shift_date: dateStr,
+                        role_id: roleId,
+                        volunteer_name: this.volunteerName.trim()
+                    });
+                    
+                    await this.loadSignups();
+                    this.showNotification('✓ Signed up successfully!');
+                    
+                } catch (e) {
+                    console.error('Error signing up:', e);
+                    this.showNotification('Error signing up. Please try again.', 'error');
+                    return;
+                }
+                
+                this.showModal = false;
+                this.volunteerName = '';
+                this.render();
+            },
+
+            async removeSignup(view, dateStr, roleId, signup) {
+                if (!confirm(`Remove ${signup.name}?`)) return;
+                
+                try {
+                    await googleAPI.call('removeSignup', {
+                        id: signup.id
+                    });
+                    
+                    await this.loadSignups();
+                    this.showNotification('✓ Removed successfully');
+                    
+                } catch (e) {
+                    console.error('Error removing:', e);
+                    this.showNotification('Error removing. Please try again.', 'error');
+                    return;
+                }
+                
+                this.render();
+            },
+
+            getSignups(view, dateStr, roleId) {
+                return this.signups[view]?.[dateStr]?.[roleId] || [];
+            },
+
+            getNextShiftStats() {
+                if (this.currentView === 'weekly-tasks') return null;
+                
+                if (this.currentView !== 'thursday-hall' && this.currentView !== 'saturday-hall') {
+                    return null;
+                }
+                
+                const nextDate = this.getNextUpcomingDate(this.currentView);
+                if (!nextDate) return null;
+                
+                const roles = this.getVisibleRoles(this.currentView);
+                let totalSlots = 0;
+                let filledSlots = 0;
+                
+                roles.forEach(role => {
+                    if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, nextDate)) {
+                        return;
+                    }
+                    
+                    const signups = this.getSignups(this.currentView, nextDate, role.id);
+                    totalSlots += role.capacity;
+                    filledSlots += Math.min(signups.length, role.capacity);
+                });
+
+                const [year, month, day] = nextDate.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                const dateLabel = date.toLocaleDateString('en-NZ', { 
+                    weekday: 'long', day: 'numeric', month: 'long'
+                });
+
+                return { 
+                    totalSlots, 
+                    filledSlots, 
+                    coverage: Math.round((filledSlots / totalSlots) * 100),
+                    dateLabel,
+                    needsHelp: totalSlots - filledSlots
+                };
+            },
+
+            getDayOfWeek(dateStr) {
+                const [year, month, day] = dateStr.split('-').map(Number);
+                let m = month;
+                let y = year;
+                
+                if (m < 3) {
+                    m += 12;
+                    y--;
+                }
+                
+                const q = day;
+                const K = y % 100;
+                const J = Math.floor(y / 100);
+                
+                const h = (q + Math.floor((13 * (m + 1)) / 5) + K + Math.floor(K / 4) + Math.floor(J / 4) - (2 * J)) % 7;
+                
+                return (h + 6) % 7;
+            },
+
+            getDatesForPeriod() {
+                const period = this.periods.find(p => p.id === this.selectedPeriod);
+                if (!period) return [];
+                const dates = [];
+                
+                if (this.currentView === 'weekly-tasks') {
+                    const targetDay = 3;
+                    period.months.forEach(month => {
+                        for (let day = 1; day <= 31; day++) {
+                            const dateStr = `${period.year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            
+                            const testDate = new Date(period.year, month - 1, day);
+                            if (testDate.getMonth() !== month - 1) break;
+                            
+                            if (this.getDayOfWeek(dateStr) === targetDay) {
+                                const wed = new Date(period.year, month - 1, day);
+                                const thurs = new Date(period.year, month - 1, day + 1);
+                                
+                                dates.push({ 
+                                    date: dateStr, 
+                                    label: `${formatSafeDate(dateStr)} - ${formatSafeDate(thurs.toISOString().split('T')[0])}` 
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
+                    period.months.forEach(month => {
+                        for (let day = 1; day <= 31; day++) {
+                            const dateStr = `${period.year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            
+                            const testDate = new Date(period.year, month - 1, day);
+                            if (testDate.getMonth() !== month - 1) break;
+                            
+                            if (this.getDayOfWeek(dateStr) === targetDay) {
+                                const date = new Date(period.year, month - 1, day);
+                                dates.push({
+                                    date: dateStr,
+                                    label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                                });
+                            }
+                        }
+                    });
+                }
+                return dates;
+            },
+
+            generateReport() {
+                const stats = {
+                    totalSignups: 0,
+                    volunteerList: new Set(),
+                    byRoster: {},
+                    topVolunteers: [],
+                    volunteersByRole: {
+                        managers: new Set(),
+                        hallHelp: new Set(),
+                        drinks: new Set(),
+                        dishes: new Set(),
+                        laundry: new Set()
+                    },
+                    volunteerCountsByRole: {
+                        managers: {},
+                        hallHelp: {},
+                        drinks: {},
+                        dishes: {},
+                        laundry: {}
+                    }
+                };
+                
+                for (let rosterType in this.signups) {
+                    stats.byRoster[rosterType] = { total: 0, volunteers: new Set() };
+                    
+                    for (let dateStr in this.signups[rosterType]) {
+                        for (let roleId in this.signups[rosterType][dateStr]) {
+                            const volunteers = this.signups[rosterType][dateStr][roleId];
+                            
+                            stats.totalSignups += volunteers.length;
+                            stats.byRoster[rosterType].total += volunteers.length;
+                            
+                            volunteers.forEach(v => {
+                                const fullName = v.name.trim();
+                                stats.volunteerList.add(fullName);
+                                stats.byRoster[rosterType].volunteers.add(fullName);
+                                
+                                if (roleId === 'managers') {
+                                    stats.volunteersByRole.managers.add(fullName);
+                                    if (!stats.volunteerCountsByRole.managers[fullName]) {
+                                        stats.volunteerCountsByRole.managers[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.managers[fullName]++;
+                                } else if (roleId.includes('hall-help')) {
+                                    stats.volunteersByRole.hallHelp.add(fullName);
+                                    if (!stats.volunteerCountsByRole.hallHelp[fullName]) {
+                                        stats.volunteerCountsByRole.hallHelp[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.hallHelp[fullName]++;
+                                } else if (roleId === 'drinks') {
+                                    stats.volunteersByRole.drinks.add(fullName);
+                                    if (!stats.volunteerCountsByRole.drinks[fullName]) {
+                                        stats.volunteerCountsByRole.drinks[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.drinks[fullName]++;
+                                } else if (roleId === 'dishes') {
+                                    stats.volunteersByRole.dishes.add(fullName);
+                                    if (!stats.volunteerCountsByRole.dishes[fullName]) {
+                                        stats.volunteerCountsByRole.dishes[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.dishes[fullName]++;
+                                } else if (roleId === 'laundry') {
+                                    stats.volunteersByRole.laundry.add(fullName);
+                                    if (!stats.volunteerCountsByRole.laundry[fullName]) {
+                                        stats.volunteerCountsByRole.laundry[fullName] = 0;
+                                    }
+                                    stats.volunteerCountsByRole.laundry[fullName]++;
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                stats.topByRole = {
+                    managers: Object.entries(stats.volunteerCountsByRole.managers)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    hallHelp: Object.entries(stats.volunteerCountsByRole.hallHelp)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    drinks: Object.entries(stats.volunteerCountsByRole.drinks)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    dishes: Object.entries(stats.volunteerCountsByRole.dishes)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10),
+                    laundry: Object.entries(stats.volunteerCountsByRole.laundry)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10)
+                };
+                
+                return stats;
+            },
+
+            exportToCSV() {
+                const rows = [['Date', 'Day', 'Roster Type', 'Role', 'Time', 'Volunteer', 'Capacity']];
+                
+                for (let rosterType in this.signups) {
+                    const rosterName = rosterType === 'thursday-hall' ? 'Thursday Hall' :
+                                      rosterType === 'saturday-hall' ? 'Saturday Hall' : 'Additional Weekly Tasks';
+                    
+                    for (let dateStr in this.signups[rosterType]) {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        const dayName = date.toLocaleDateString('en-NZ', { weekday: 'long' });
+                        const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+                        
+                        for (let roleId in this.signups[rosterType][dateStr]) {
+                            const role = this.roles[rosterType]?.find(r => r.id === roleId);
+                            const volunteers = this.signups[rosterType][dateStr][roleId];
+                            
+                            if (volunteers.length === 0) {
+                                rows.push([dateLabel, dayName, rosterName, role?.name || roleId, role?.time || '', '(empty)', role?.capacity || '']);
+                            } else {
+                                volunteers.forEach(v => {
+                                    rows.push([dateLabel, dayName, rosterName, role?.name || roleId, role?.time || '', v.name, role?.capacity || '']);
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `uts-roster-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showNotification('CSV exported successfully!');
+            },
+
+            downloadBackup() {
+                const backup = {
+                    data: this.signups,
+                    periods: this.periods,
+                    timestamp: new Date().toISOString(),
+                    version: '1.0'
+                };
+                
+                const json = JSON.stringify(backup, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `uts-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showNotification('Backup downloaded!');
+            },
+
+            uploadBackup() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const backup = JSON.parse(event.target.result);
+                            if (backup.data) {
+                                this.signups = backup.data;
+                                if (backup.periods && Array.isArray(backup.periods)) {
+                                    this.periods = backup.periods;
+                                }
+                                this.createBackup();
+                                this.showNotification('Backup restored successfully!');
+                                this.render();
+                            } else {
+                                throw new Error('Invalid backup file');
+                            }
+                        } catch (e) {
+                            this.showNotification('Error loading backup: ' + e.message, 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            },
+
+            addNextQuarter() {
+                const lastPeriod = this.periods[this.periods.length - 1];
+                const lastYear = lastPeriod.year;
+                const lastMonths = lastPeriod.months;
+                const lastMonth = lastMonths[lastMonths.length - 1];
+                
+                let newYear = lastYear;
+                let newMonths = [];
+                let startMonth = lastMonth + 1;
+                
+                if (startMonth > 12) {
+                    startMonth = 1;
+                    newYear++;
+                }
+                
+                for (let i = 0; i < 3; i++) {
+                    let month = startMonth + i;
+                    if (month > 12) {
+                        month = month - 12;
+                        newYear = lastYear + 1;
+                    }
+                    newMonths.push(month);
+                }
+                
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const label = `${monthNames[newMonths[0]-1]} - ${monthNames[newMonths[2]-1]} ${newYear}`;
+                const id = `${monthNames[newMonths[0]-1].toLowerCase()}-${monthNames[newMonths[2]-1].toLowerCase()}-${newYear}`;
+                
+                this.periods.push({
+                    id: id,
+                    label: label,
+                    months: newMonths,
+                    year: newYear
+                });
+                
+                this.showNotification(`Added quarter: ${label}`, 'success');
+                this.render();
+            },
+
+            loginAdmin() {
+                const password = prompt('Enter admin password:');
+                if (password === ADMIN_PASSWORD) {
+                    this.isAdmin = true;
+                    this.currentView = 'admin';
+                    this.render();
+                } else if (password !== null) {
+                    alert('Incorrect password');
+                }
+            },
+
+            logoutAdmin() {
+                this.isAdmin = false;
+                this.currentView = 'welcome';
+                this.render();
+            },
+
+            navigateTo(view) {
+                this.currentView = view;
+                this.render();
+            },
+
+            render() {
+                try {
+                    const appEl = document.getElementById('app');
+                    if (!appEl) return;
+
+                    if (this.isLoading) {
+                        appEl.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="loading-spinner mx-auto mb-4"></div>
+                                    <p class="text-gray-600 text-lg mb-4">Loading roster...</p>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    if (this.showMySignups) {
+                        appEl.innerHTML = this.renderMySignups();
+                    } else if (this.currentView === 'welcome') {
+                        appEl.innerHTML = this.renderWelcome();
+                    } else if (this.currentView === 'admin') {
+                        appEl.innerHTML = this.renderAdmin();
+                    } else {
+                        appEl.innerHTML = this.renderRoster();
+                    }
+                } catch (error) {
+                    console.error("Render Error:", error);
+                    document.getElementById('app').innerHTML = `
+                        <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg mt-10 border-t-4 border-red-500">
+                            <h2 class="text-xl font-bold text-gray-900">⚠️ Load Error</h2>
+                            <p class="text-gray-500 text-sm mt-2">Error during display. Please refresh.</p>
+                        </div>
+                    `;
+                }
+            },
+
+            renderMySignups() {
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h2 class="text-2xl font-bold">My Signups: ${this.searchName}</h2>
+                                    <button onclick="app.showMySignups=false; app.render();" class="text-gray-600 hover:text-gray-800">✕ Close</button>
+                                </div>
+                                
+                                ${this.mySignupsList.length === 0 ? `
+                                    <p class="text-gray-600">No signups found.</p>
+                                ` : `
+                                    <div class="space-y-3">
+                                        ${this.mySignupsList.map(s => `
+                                            <div class="p-4 border rounded-lg ${this.getDateClass(s.date)}">
+                                                <div class="font-bold text-lg mb-1">${s.dateLabel}</div>
+                                                <div class="text-sm text-gray-700">
+                                                    <span class="font-semibold">${s.roster}</span> - ${s.role}
+                                                    ${s.time ? `<span class="text-gray-500"> (${s.time})</span>` : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                                
+                                <button onclick="app.showMySignups=false; app.render();" class="mt-6 w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                    Back to Roster
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderWelcome() {
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-8">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-12 h-12 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                        <div>
+                                            <h1 class="text-4xl font-bold">Under the Stars</h1>
+                                            <p class="text-xl text-gray-600">Meal Rosters</p>
+                                        </div>
+                                    </div>
+                                    <button onclick="app.loginAdmin()" class="text-gray-400 hover:text-gray-600 text-sm">Admin</button>
+                                </div>
+
+                                <div class="mb-8 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded">
+                                    <h3 class="font-bold text-indigo-900 mb-2">📅 Choose your time period:</h3>
+                                    <select onchange="app.selectedPeriod=this.value; localStorage.setItem('uts-selected-period', this.value); app.render();" 
+                                            class="w-full p-3 border-2 border-indigo-300 rounded-lg text-lg font-semibold bg-white">
+                                        ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                                    </select>
+                                </div>
+
+                                <div class="mb-8 text-gray-700 space-y-4">
+                                    <p class="text-lg">Welcome! 😊</p>
+                                    <p>Thanks for volunteering! We ask volunteers give their time once a month. Don't burn yourself out - we want you around for the long haul! 🙂</p>
+                                    
+                                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                                        <h3 class="font-bold text-blue-900 mb-2">To sign up:</h3>
+                                        <ol class="list-decimal list-inside space-y-1 text-blue-800">
+                                            <li>Choose your preferred day and task below</li>
+                                            <li>Find an available date and enter your name</li>
+                                            <li><strong>If anything changes, please notify the operations coordinator at <a href="mailto:operations@underthestars.org.nz" class="underline">operations@underthestars.org.nz</a> as soon as possible</strong></li>
+                                        </ol>
+                                    </div>
+                                    
+                                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                                        <h3 class="font-bold text-green-900 mb-2">Find Your Signups:</h3>
+                                        <div class="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Enter your name" 
+                                                id="searchNameInput"
+                                                class="flex-1 px-4 py-2 border rounded-lg"
+                                                onkeypress="if(event.key==='Enter'){app.searchName=this.value; app.getMySignups();}"
+                                            />
+                                            <button onclick="app.searchName=document.getElementById('searchNameInput').value; app.getMySignups();" class="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700">
+                                                Search
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p><strong>Meal Managers:</strong> Ani Stace, Carol Machaj, Keiran Stuart, Carl Fenton, Rose Kent-Wilson, Adrian De Souza</p>
+                                    <p><strong>Venue:</strong> Cliff Rd community hall, 45 Cliff Rd</p>
+                                    <p class="text-sm">*Long hair tied back. Closed toe shoes required.</p>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <button onclick="app.navigateTo('thursday-hall');" 
+                                            class="w-full bg-blue-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-blue-700 transition-colors">
+                                        Thursday Hall Help →
+                                    </button>
+                                    
+                                    <button onclick="app.navigateTo('saturday-hall');" 
+                                            class="w-full bg-orange-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-orange-700 transition-colors">
+                                        Saturday Hall Help →
+                                    </button>
+                                    
+                                    <button onclick="app.navigateTo('weekly-tasks');" 
+                                            class="w-full bg-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:bg-pink-700 transition-colors">
+                                        Additional Weekly Tasks →
+                                    </button>
+                                    
+                                    ${this.specialEvents.filter(e => e.visible).map(event => `
+                                        <button onclick="app.navigateTo('${event.id}');"
+                                                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
+                                            ${event.name} →
+                                        </button>
+                                    `).join('')}
+                                </div>
+
+                                ${this.connectionStatus === 'connected' ? `
+                                    <div class="mt-6 p-3 bg-green-100 text-green-800 rounded-lg text-sm text-center">
+                                        ✓ Connected to Google Sheets
+                                    </div>
+                                ` : this.connectionStatus === 'error' ? `
+                                    <div class="mt-6 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm text-center">
+                                        ⚠️ Working offline - Changes may not save
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderRoster() {
+                const specialEvent = this.specialEvents.find(e => e.id === this.currentView);
+                const isSpecialEvent = !!specialEvent;
+                
+                const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
+                const dates = this.getDatesForPeriod();
+                const roles = this.getVisibleRoles(this.currentView);
+                const nextShiftStats = this.getNextShiftStats();
+                const nextShiftDate = this.getNextUpcomingDate();
+
+                const viewTitle = isSpecialEvent ? specialEvent.name :
+                                 this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
+                                 this.currentView === 'saturday-hall' ? 'Saturday Hall Help' : 'Additional Weekly Tasks';
+
+                const datesByMonth = {};
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                let currentMonthKey = null;
+
+                dates.forEach(d => {
+                    const [year, month, day] = d.date.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    date.setHours(0, 0, 0, 0);
+                    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                    const monthName = date.toLocaleDateString('en-NZ', { month: 'long', year: 'numeric' });
+                    
+                    if (!datesByMonth[monthKey]) {
+                        datesByMonth[monthKey] = {
+                            name: monthName,
+                            dates: [],
+                            containsToday: false
+                        };
+                    }
+                    
+                    datesByMonth[monthKey].dates.push(d);
+                    
+                    if (date.getTime() === today.getTime()) {
+                        datesByMonth[monthKey].containsToday = true;
+                        currentMonthKey = monthKey;
+                    }
+                });
+
+                if (!currentMonthKey) {
+                    for (let monthKey in datesByMonth) {
+                        const firstDateStr = datesByMonth[monthKey].dates[0].date;
+                        const [y, m, d] = firstDateStr.split('-').map(Number);
+                        const firstDate = new Date(y, m - 1, d);
+                        if (firstDate >= today) {
+                            currentMonthKey = monthKey;
+                            break;
+                        }
+                    }
+                }
+
+                if (!this.collapsedMonths) this.collapsedMonths = {};
+                for (let monthKey in datesByMonth) {
+                    if (this.collapsedMonths[monthKey] === undefined) {
+                        this.collapsedMonths[monthKey] = (monthKey !== currentMonthKey);
+                    }
+                }
+
+                return `
+                    <div class="min-h-screen p-2 md:p-4 print-full-width">
+                        <div class="max-w-7xl mx-auto">
+                            ${this.connectionStatus === 'connected' ? `
+                                <div class="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-sm no-print">
+                                    ✓ Connected - Changes sync across all devices
+                                </div>
+                            ` : this.connectionStatus === 'error' ? `
+                                <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print">
+                                    ⚠️ Working offline - Using local storage
+                                </div>
+                            ` : ''}
+
+                            <div class="bg-white rounded-lg shadow-xl p-4 md:p-6 mb-6 no-print">
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                                    <div>
+                                        <h1 class="text-2xl md:text-3xl font-bold mb-1">${viewTitle}</h1>
+                                        ${!isSpecialEvent ? `<p class="text-gray-600">${currentPeriod.label}</p>` : `<p class="text-gray-600">Special Event</p>`}
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="app.navigateTo('welcome');" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Back</button>
+                                        <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Print</button>
+                                    </div>
+                                </div>
+
+                                ${nextShiftStats ? `
+                                    <div class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border-2 border-blue-300">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div>
+                                                <h3 class="font-bold text-blue-900">Next Shift: ${nextShiftStats.dateLabel}</h3>
+                                                <p class="text-sm text-blue-700">${nextShiftStats.filledSlots} of ${nextShiftStats.totalSlots} positions filled</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-3xl font-bold ${nextShiftStats.coverage >= 90 ? 'text-green-600' : nextShiftStats.coverage >= 60 ? 'text-yellow-600' : 'text-red-600'}">
+                                                    ${nextShiftStats.coverage}%
+                                                </div>
+                                                ${nextShiftStats.needsHelp > 0 ? `
+                                                    <div class="text-xs text-red-600 font-semibold">
+                                                        Need ${nextShiftStats.needsHelp} more!
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill ${nextShiftStats.coverage >= 90 ? 'bg-green-500' : nextShiftStats.coverage >= 60 ? 'bg-yellow-500' : 'bg-red-500'}" 
+                                                 style="width: ${nextShiftStats.coverage}%"></div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                ${!isSpecialEvent ? `
+                                    <div class="flex flex-col md:flex-row gap-2 mb-4">
+                                        <select onchange="app.selectedPeriod=this.value; localStorage.setItem('uts-selected-period', this.value); app.render();" class="flex-1 p-2 border rounded-lg">
+                                            ${this.periods.map(p => `<option value="${p.id}" ${p.id === this.selectedPeriod ? 'selected' : ''}>${p.label}</option>`).join('')}
+                                        </select>
+                                        ${this.currentView !== 'weekly-tasks' ? `
+                                            <button onclick="app.currentView='${this.currentView === 'thursday-hall' ? 'saturday-hall' : 'thursday-hall'}'; app.render();" 
+                                                    class="px-4 py-2 ${this.currentView === 'thursday-hall' ? 'bg-orange-600' : 'bg-blue-600'} text-white rounded-lg hover:opacity-90">
+                                                Switch to ${this.currentView === 'thursday-hall' ? 'Saturday' : 'Thursday'}
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-4 no-print">
+                                <h3 class="font-bold text-blue-900 mb-2">📝 How to Sign Up:</h3>
+                                <ol class="list-decimal list-inside space-y-1 text-blue-800 text-sm">
+                                    <li>Expand the month you want to volunteer</li>
+                                    <li>Find a date that works for you</li>
+                                    <li>Click the green "✋ Sign me up!" button for your preferred role</li>
+                                    <li>Type your name and click Confirm</li>
+                                </ol>
+                                <p class="text-xs text-blue-700 mt-2">💡 Tip: Click month headers to expand/collapse. Scroll right to see all roles.</p>
+                            </div>
+
+                            ${Object.entries(datesByMonth).map(([monthKey, monthData]) => {
+                                const isCollapsed = this.collapsedMonths[monthKey];
+                                
+                                return `
+                                    <div class="month-section mb-4">
+                                        <div class="month-header ${isCollapsed ? 'collapsed' : ''}" onclick="app.toggleMonth('${monthKey}')">
+                                            <span>${monthData.name}</span>
+                                            <span class="chevron">▼</span>
+                                        </div>
+                                        
+                                        <div class="month-content ${isCollapsed ? 'collapsed' : ''}">
+                                            <div class="bg-white overflow-hidden">
+                                                <div class="table-container">
+                                                    <table class="w-full">
+                                                        <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
+                                                            <tr>
+                                                                <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
+                                                                ${roles.map(role => `
+                                                                    <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold role-cell">
+                                                                        <div class="font-bold">${role.name}</div>
+                                                                        <div class="text-xs opacity-90">${role.time}</div>
+                                                                    </th>
+                                                                `).join('')}
+                                                                ${this.isAdmin ? `
+                                                                    <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">
+                                                                        <div class="font-bold">Notes</div>
+                                                                        <div class="text-xs opacity-90">Admin only</div>
+                                                                    </th>
+                                                                ` : ''}
+                                                                ${this.isAdmin && this.currentView !== 'weekly-tasks' ? '<th class="p-2 md:p-3 text-center text-xs md:text-sm font-semibold">Giveaway</th>' : ''}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            ${monthData.dates.map((d, i) => {
+                                                                const dateClass = this.getDateClass(d.date);
+                                                                const isNextShift = d.date === nextShiftDate;
+                                                                return `
+                                                                <tr class="border-b hover:bg-gray-50 ${dateClass}">
+                                                                    <td class="p-2 md:p-3 font-semibold text-xs md:text-sm sticky left-0 bg-white z-10 border-r">
+                                                                        <div class="flex flex-col gap-1">
+                                                                            ${isNextShift ? '<div class="next-shift-badge">NEXT</div>' : ''}
+                                                                            <span>${d.label}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    ${roles.map(role => {
+                                                                        const isGiveawayRole = role.id === 'giveaway';
+                                                                        const giveawayEnabled = this.isGiveawayEnabled(this.currentView, d.date);
+                                                                        
+                                                                        if (isGiveawayRole && !giveawayEnabled) {
+                                                                            return `
+                                                                                <td class="p-2 md:p-3 text-xs md:text-sm role-cell giveaway-disabled">
+                                                                                    Not available
+                                                                                </td>
+                                                                            `;
+                                                                        }
+                                                                        
+                                                                        const signups = this.getSignups(this.currentView, d.date, role.id);
+                                                                        const slotsLeft = role.capacity - signups.length;
+                                                                        return `
+                                                                        <td class="p-2 md:p-3 text-xs md:text-sm role-cell">
+                                                                            ${signups.map(signup => {
+                                                                                const isEditing = this.editingSignup && 
+                                                                                                this.editingSignup.view === this.currentView && 
+                                                                                                this.editingSignup.dateStr === d.date && 
+                                                                                                this.editingSignup.roleId === role.id && 
+                                                                                                this.editingSignup.signup === signup;
+                                                                                
+                                                                                return `
+                                                                                    <div class="mb-1 flex items-center gap-1 volunteer-item">
+                                                                                        ${isEditing ? `
+                                                                                            <input 
+                                                                                                type="text" 
+                                                                                                value="${signup.name}" 
+                                                                                                id="editInput-${monthKey}-${i}"
+                                                                                                class="flex-1 px-2 py-1 border-2 border-blue-500 rounded"
+                                                                                                onkeypress="if(event.key==='Enter'){app.saveEdit(this.value);}"
+                                                                                            />
+                                                                                            <button onclick="app.saveEdit(document.getElementById('editInput-${monthKey}-${i}').value);" class="text-green-600 hover:text-green-800 text-lg">✓</button>
+                                                                                            <button onclick="app.cancelEdit();" class="text-red-600 hover:text-red-800 text-lg">✕</button>
+                                                                                        ` : `
+                                                                                            <span class="flex-1">✓ ${signup.name}</span>
+                                                                                            <button onclick="app.startEdit('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                                                    class="edit-icon text-sm">✏️</button>
+                                                                                            <button onclick="app.removeSignup('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                                                    class="text-red-600 hover:text-red-800 text-sm ml-1">✕</button>
+                                                                                        `}
+                                                                                    </div>
+                                                                                `;
+                                                                            }).join('')}
+                                                                            ${!this.editingSignup || this.editingSignup.view !== this.currentView || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id ? `
+                                                                                <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+                                                                                        class="w-full text-left px-2 py-1 mb-1 text-xs font-semibold rounded transition-all
+                                                                                               ${slotsLeft > 0 
+                                                                                                 ? 'bg-green-50 border-2 border-green-400 text-green-700 hover:bg-green-100 hover:border-green-600' 
+                                                                                                 : 'bg-orange-50 border-2 border-orange-400 text-orange-700 hover:bg-orange-100'}">
+                                                                                    ${slotsLeft > 0 
+                                                                                      ? `✋ Sign me up! (${slotsLeft} ${slotsLeft === 1 ? 'spot' : 'spots'} left)` 
+                                                                                      : '⚠️ FULL - Add anyway?'}
+                                                                                </button>
+                                                                            ` : ''}
+                                                                        </td>
+                                                                    `;
+                                                                    }).join('')}
+                                                                    ${this.isAdmin ? `
+                                                                        <td class="p-2 md:p-3">
+                                                                            <input type="text" 
+                                                                                   placeholder="Add note..." 
+                                                                                   value="${this.getNote(this.currentView, d.date)}"
+                                                                                   onchange="app.saveNote('${this.currentView}', '${d.date}', this.value)"
+                                                                                   class="w-full p-1 text-xs border rounded" />
+                                                                        </td>
+                                                                    ` : ''}
+                                                                    ${this.isAdmin && this.currentView !== 'weekly-tasks' ? `
+                                                                        <td class="p-2 md:p-3 text-center">
+                                                                            <input type="checkbox" 
+                                                                                   ${this.isGiveawayEnabled(this.currentView, d.date) ? 'checked' : ''}
+                                                                                   onchange="app.toggleGiveaway('${this.currentView}', '${d.date}')"
+                                                                                   class="w-4 h-4" />
+                                                                        </td>
+                                                                    ` : ''}
+                                                                </tr>
+                                                            `}).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    ${this.showModal ? `
+                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this){app.showModal=false; app.render();}">
+                            <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+                                <h3 class="text-2xl font-bold mb-2">Sign Up for This Shift</h3>
+                                
+                                <div class="bg-blue-50 p-3 rounded mb-4 text-sm">
+                                    <p><strong>Date:</strong> ${(() => {
+                                        const slot = this.selectedSlot;
+                                        if (!slot) return '';
+                                        const [y, m, d] = slot.dateStr.split('-').map(Number);
+                                        const date = new Date(y, m - 1, d);
+                                        return date.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' });
+                                    })()}</p>
+                                    <p><strong>Role:</strong> ${(() => {
+                                        const slot = this.selectedSlot;
+                                        if (!slot) return '';
+                                        const role = this.getVisibleRoles(slot.view).find(r => r.id === slot.roleId);
+                                        return role ? `${role.name} (${role.time})` : '';
+                                    })()}</p>
+                                </div>
+                                
+                                <label class="block text-sm font-semibold mb-2">Your Name:</label>
+                                <input type="text" 
+                                       placeholder="Enter your full name" 
+                                       value="${this.volunteerName}"
+                                       oninput="app.volunteerName=this.value"
+                                       onkeypress="if(event.key==='Enter'){app.addSignup();}"
+                                       class="w-full p-3 border-2 border-gray-300 rounded-lg mb-4 text-lg focus:border-blue-500 focus:outline-none"
+                                       autofocus />
+                                
+                                <div class="flex gap-2">
+                                    <button onclick="app.addSignup()" 
+                                            class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700 transition-colors">
+                                        ✓ Confirm Sign Up
+                                    </button>
+                                    <button onclick="app.showModal=false; app.volunteerName=''; app.render();" 
+                                            class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            },
+
+            renderAdmin() {
+                const stats = this.generateReport();
+                
+                return `
+                    <div class="min-h-screen p-4">
+                        <div class="max-w-6xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+                                    <div class="flex gap-2">
+                                        <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">👁️ View as Volunteer</button>
+                                        <button onclick="app.logoutAdmin()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2 mb-6 flex-wrap">
+                                    <button onclick="app.adminView='dashboard'; app.render();" class="px-4 py-2 ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Dashboard</button>
+                                    <button onclick="app.adminView='volunteers'; app.render();" class="px-4 py-2 ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Volunteers by Role</button>
+                                    <button onclick="app.adminView='special-events'; app.render();" class="px-4 py-2 ${this.adminView === 'special-events' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Special Events</button>
+                                </div>
+
+                                ${this.adminView === 'dashboard' ? `
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <div class="p-4 bg-blue-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-blue-600">${stats.totalSignups}</div>
+                                            <div class="text-gray-600">Total Signups</div>
+                                        </div>
+                                        <div class="p-4 bg-green-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-green-600">${stats.volunteerList.size}</div>
+                                            <div class="text-gray-600">Unique Volunteers</div>
+                                        </div>
+                                        <div class="p-4 bg-purple-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-purple-600">${this.specialEvents.length}</div>
+                                            <div class="text-gray-600">Special Events</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="p-4 bg-blue-50 rounded-lg">
+                                                <h4 class="font-bold text-blue-900 mb-3">👔 Top Meal Managers</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.managers.length > 0 ? stats.topByRole.managers.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-green-50 rounded-lg">
+                                                <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-purple-50 rounded-lg">
+                                                <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks Trolley</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-4 bg-yellow-50 rounded-lg">
+                                                <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
+                                            📊 Export to CSV
+                                        </button>
+                                        <button onclick="app.downloadBackup()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                                            💾 Download Backup
+                                        </button>
+                                        <button onclick="app.uploadBackup()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
+                                            📂 Upload Backup
+                                        </button>
+                                        <button onclick="app.addNextQuarter()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                            ➕ Add Next Quarter
+                                        </button>
+                                    </div>
+                                ` : this.adminView === 'volunteers' ? `
+                                    <div class="space-y-6">
+                                        <div class="p-4 bg-blue-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-blue-900 mb-3">👔 Managers (${stats.volunteersByRole.managers.size})</h3>
+                                            <div class="text-sm text-blue-800">
+                                                ${Array.from(stats.volunteersByRole.managers).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-green-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-green-900 mb-3">🤝 Hall Help (${stats.volunteersByRole.hallHelp.size})</h3>
+                                            <div class="text-sm text-green-800">
+                                                ${Array.from(stats.volunteersByRole.hallHelp).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-purple-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-purple-900 mb-3">🥤 Drinks Trolley (${stats.volunteersByRole.drinks.size})</h3>
+                                            <div class="text-sm text-purple-800">
+                                                ${Array.from(stats.volunteersByRole.drinks).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-yellow-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-yellow-900 mb-3">🍽️ Dishes (${stats.volunteersByRole.dishes.size})</h3>
+                                            <div class="text-sm text-yellow-800">
+                                                ${Array.from(stats.volunteersByRole.dishes).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+
+                                        <div class="p-4 bg-pink-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-pink-900 mb-3">🧺 Laundry (${stats.volunteersByRole.laundry.size})</h3>
+                                            <div class="text-sm text-pink-800">
+                                                ${Array.from(stats.volunteersByRole.laundry).sort().join(', ') || 'None'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div>
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h3 class="text-2xl font-bold">Special Events</h3>
+                                            <button onclick="app.editingEvent='new'; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                                ➕ Create Event
+                                            </button>
+                                        </div>
+${this.editingEvent === 'new' ? `
+                                        <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                            <h4 class="font-bold mb-4">Create New Event</h4>
+                                            <div class="space-y-3">
+                                                <input type="text" id="newEventName" placeholder="Event name" class="w-full p-2 border rounded-lg" />
+                                                <input type="date" id="newEventDate" class="w-full p-2 border rounded-lg" />
+                                                <div class="flex gap-2">
+                                                    <button onclick="
+                                                        const name = document.getElementById('newEventName').value;
+                                                        const date = document.getElementById('newEventDate').value;
+                                                        if(name && date) {
+                                                            app.createSpecialEvent(name, [date], [{id:'volunteers',name:'Volunteers',time:'TBD',capacity:10}]);
+                                                            app.editingEvent=null;
+                                                            app.render();
+                                                        } else {
+                                                            alert('Please fill in all fields');
+                                                        }
+                                                    " class="flex-1 bg-indigo-600 text-white py-2 rounded-lg">Create</button>
+                                                    <button onclick="app.editingEvent=null; app.render();" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancel</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+
+                                    <div class="space-y-4">
+                                        ${this.specialEvents.map(event => `
+                                            <div class="p-4 border rounded-lg ${event.visible ? 'bg-white' : 'bg-gray-50'}">
+                                                <div class="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 class="text-lg font-bold">${event.name}</h4>
+                                                        <p class="text-sm text-gray-600">${event.dates.join(', ')}</p>
+                                                    </div>
+                                                    <div class="flex gap-2">
+                                                        <button onclick="app.toggleEventVisibility('${event.id}')" class="p-2 ${event.visible ? 'text-green-600' : 'text-gray-400'} rounded">
+                                                            ${event.visible ? '👁️' : '👁️‍🗨️'}
+                                                        </button>
+                                                        <button onclick="app.deleteSpecialEvent('${event.id}'); app.render();" class="p-2 text-red-600 rounded">🗑️</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    };
+
+    app.init();
+</script>

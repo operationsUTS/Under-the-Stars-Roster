@@ -2,171 +2,102 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Under the Stars Volunteer Roster</title>
-    <script src="https://cdn.tailwindcss.com?v=3.4.1"></script>
+    <title>UTS Volunteer Roster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @media print { .no-print { display: none !important; } }
-        .date-past { opacity: 0.5; background-color: #f1f5f9 !important; }
-        .month-header { 
-            background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%); 
-            color: white; padding: 1rem; cursor: pointer; display: flex; 
-            justify-content: space-between; border-radius: 12px 12px 0 0; 
-        }
-        .progress-bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px; }
-        .progress-fill { height: 100%; transition: width 0.4s; }
+        body { font-family: ui-sans-serif, system-ui; background: #f8fafc; }
+        .active-view { background: #1e293b !important; color: white !important; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20">
-    <div id="app"></div>
+<body class="p-4 md:p-10">
+    <div id="app" class="max-w-6xl mx-auto">
+        <div class="text-center p-20 font-bold text-slate-400">PULLING DATA...</div>
+    </div>
 
     <script>
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgP_kDsnhgjoDZ4COfw2quttr4GpAGWCWJh6qWqNFp/dev';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuVlgfsP_98f5Aafo1ghZyVYhSfEwk5uLejtQx-PdOfPDhq3G1A2YDxp3l0UfVcBqG/exec';
 
-        const app = {
-            currentView: 'thursday-hall',
-            selectedPeriod: 'oct-dec-2025',
-            signups: {}, 
-            // All months start collapsed
-            collapsedMonths: { 1:true, 2:true, 3:true, 4:true, 5:true, 6:true, 7:true, 8:true, 9:true, 10:true, 11:true, 12:true },
-            isLoading: false,
+        const state = { view: 'thursday-hall', data: [] };
 
-            periods: [
-                { id: 'oct-dec-2025', label: 'Oct-Dec 2025', months: [10, 11, 12], year: 2025 },
-                { id: 'jan-mar-2026', label: 'Jan-Mar 2026', months: [1, 2, 3], year: 2026 },
-                { id: 'apr-jun-2026', label: 'Apr-Jun 2026', months: [4, 5, 6], year: 2026 }
-            ],
-
-            roles: {
-                'thursday-hall': [
-                    { id: 'managers', name: 'Managers', cap: 2 },
-                    { id: 'hall-help', name: 'Hall Help', cap: 4 },
-                    { id: 'drinks', name: 'Drinks', cap: 1 },
-                    { id: 'dishes', name: 'Dishes', cap: 1 },
-                    { id: 'laundry', name: 'Laundry', cap: 1 }
-                ],
-                'saturday-hall': [
-                    { id: 'managers', name: 'Managers', cap: 2 },
-                    { id: 'hall-help-1', name: 'Shift 1', cap: 3 },
-                    { id: 'hall-help-2', name: 'Shift 2', cap: 2 },
-                    { id: 'drinks', name: 'Drinks', cap: 1 },
-                    { id: 'dishes', name: 'Dishes', cap: 1 },
-                    { id: 'laundry', name: 'Laundry', cap: 1 }
-                ],
-                'weekly-tasks': [
-                    { id: 'wed-pickup', name: 'Wed Pickup', cap: 1 },
-                    { id: 'thurs-pickup', name: 'Thurs Pickup', cap: 1 },
-                    { id: 'cheesecake', name: 'Cheesecake', cap: 1 }
-                ]
-            },
-
-            async init() { await this.refreshData(); },
-
-            async refreshData() {
-                this.isLoading = true; this.render();
-                try {
-                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSignups&t=${Date.now()}`);
-                    const json = await res.json();
-                    this.signups = {};
-                    if (json.data) {
-                        json.data.forEach(s => {
-                            const type = s.roster_type;
-                            const date = s.shift_date;
-                            const role = s.role_id;
-                            if (!this.signups[type]) this.signups[type] = {};
-                            if (!this.signups[type][date]) this.signups[type][date] = {};
-                            if (!this.signups[type][date][role]) this.signups[type][date][role] = [];
-                            this.signups[type][date][role].push(s.volunteer_name);
-                        });
-                    }
-                } catch (e) { console.error("Data load failed", e); }
-                this.isLoading = false; this.render();
-            },
-
-            async signup(date, roleId) {
-                const name = prompt("Volunteer Name:");
-                if (!name) return;
-                this.isLoading = true; this.render();
-                await fetch(`${GOOGLE_SCRIPT_URL}?action=addSignup&name=${encodeURIComponent(name)}&date=${date}&role=${roleId}&type=${this.currentView}`);
-                await this.refreshData();
-            },
-
-            render() {
-                const root = document.getElementById('app');
-                if (this.isLoading) { root.innerHTML = '<div class="flex justify-center mt-20 font-bold text-indigo-600">UPDATING ROSTER...</div>'; return; }
-
-                const period = this.periods.find(p => p.id === this.selectedPeriod);
-                const today = new Date().toISOString().split('T')[0];
-                const targetDay = this.currentView === 'thursday-hall' ? 4 : (this.currentView === 'saturday-hall' ? 6 : 3);
-
-                root.innerHTML = `
-                    <div class="max-w-6xl mx-auto p-4">
-                        <header class="text-center mb-8 no-print">
-                            <h1 class="text-4xl font-black text-slate-900 mb-6">UNDER THE STARS</h1>
-                            <div class="flex flex-wrap justify-center gap-2">
-                                ${Object.keys(this.roles).map(v => `
-                                    <button onclick="app.currentView='${v}';app.render()" class="px-6 py-2 rounded-xl font-bold transition ${this.currentView===v?'bg-indigo-600 text-white shadow-lg':'bg-white border text-slate-600'}">
-                                        ${v.replace('-',' ').toUpperCase()}
-                                    </button>
-                                `).join('')}
-                            </div>
-                        </header>
-
-                        ${period.months.map(m => {
-                            const dates = [];
-                            for(let d=1; d<=31; d++) {
-                                const dObj = new Date(period.year, m-1, d);
-                                if(dObj.getMonth() !== m-1) break;
-                                if(dObj.getDay() === targetDay) dates.push(dObj.toISOString().split('T')[0]);
-                            }
-                            const monthName = new Date(period.year, m-1, 1).toLocaleString('default', { month: 'long' });
-                            return `
-                                <div class="mb-4 bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
-                                    <div class="month-header" onclick="app.collapsedMonths[${m}]=!app.collapsedMonths[${m}];app.render()">
-                                        <span class="font-black uppercase tracking-wider">${monthName} ${period.year}</span>
-                                        <span class="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">${this.collapsedMonths[m] ? 'EXPAND' : 'HIDE'}</span>
-                                    </div>
-                                    <div class="${this.collapsedMonths[m] ? 'hidden' : ''} overflow-x-auto">
-                                        <table class="w-full text-left text-sm">
-                                            <tr class="bg-slate-50 border-b">
-                                                <th class="p-4 w-28 font-black text-slate-400">DATE</th>
-                                                ${this.roles[this.currentView].map(r => `<th class="p-4 font-black text-slate-400">${r.name.toUpperCase()}</th>`).join('')}
-                                            </tr>
-                                            ${dates.map(date => `
-                                                <tr class="border-b ${date < today ? 'date-past' : ''}">
-                                                    <td class="p-4 font-bold text-slate-700">${date.split('-')[2]} ${monthName.slice(0,3)}</td>
-                                                    ${this.roles[this.currentView].map(role => {
-                                                        const names = (this.signups[this.currentView] || {})[date]?.[role.id] || [];
-                                                        const pct = Math.min((names.length / role.cap) * 100, 100);
-                                                        return `
-                                                            <td class="p-4 border-l border-slate-50">
-                                                                <div class="min-h-[40px] space-y-1 mb-2">
-                                                                    ${names.map(n => `<div class="bg-white border border-slate-200 px-2 py-1 rounded shadow-sm font-semibold text-indigo-900">${n}</div>`).join('')}
-                                                                </div>
-                                                                ${date >= today && names.length < role.cap ? `<button onclick="app.signup('${date}','${role.id}')" class="text-indigo-600 font-bold hover:underline">+ JOIN</button>` : ''}
-                                                                <div class="progress-bar"><div class="progress-fill ${pct>=100?'bg-emerald-500':'bg-indigo-400'}" style="width:${pct}%"></div></div>
-                                                            </td>
-                                                        `;
-                                                    }).join('')}
-                                                </tr>
-                                            `).join('')}
-                                        </table>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-
-                        <footer class="mt-8 flex justify-between items-center no-print">
-                            <select onchange="app.selectedPeriod=this.value;app.render()" class="p-2 border rounded-lg font-bold">
-                                ${this.periods.map(p => `<option value="${p.id}" ${this.selectedPeriod===p.id?'selected':''}>${p.label}</option>`).join('')}
-                            </select>
-                            <button onclick="app.refreshData()" class="bg-slate-800 text-white px-6 py-2 rounded-xl font-bold">REFRESH DATA</button>
-                        </footer>
-                    </div>
-                `;
-            }
+        const roles = {
+            'thursday-hall': ['managers', 'hall-help', 'drinks', 'dishes', 'laundry'],
+            'saturday-hall': ['managers', 'hall-help-1', 'hall-help-2', 'drinks']
         };
-        app.init();
+
+        async function init() {
+            try {
+                const r = await fetch(SCRIPT_URL + '?action=getSignups');
+                const j = await r.json();
+                // Map the data to ensure we handle any column name weirdness
+                state.data = (j.data || []).map(row => ({
+                    date: String(row.shift_date || '').split('T')[0],
+                    role: String(row.role_id || '').toLowerCase().trim(),
+                    type: String(row.roster_type || '').toLowerCase().trim(),
+                    name: row.volunteer_name || row.Name || 'Unknown'
+                }));
+                render();
+            } catch (e) { document.getElementById('app').innerHTML = "Check Script Connection."; }
+        }
+
+        function render() {
+            const root = document.getElementById('app');
+            const activeRoles = roles[state.view];
+            const months = [10, 11, 12]; // Oct, Nov, Dec 2025
+
+            let html = `
+                <div class="flex gap-2 mb-8">
+                    <button onclick="state.view='thursday-hall';render()" class="p-4 border rounded-xl font-bold bg-white ${state.view==='thursday-hall'?'active-view':''}">THURSDAY</button>
+                    <button onclick="state.view='saturday-hall';render()" class="p-4 border rounded-xl font-bold bg-white ${state.view==='saturday-hall'?'active-view':''}">SATURDAY</button>
+                </div>
+            `;
+
+            months.forEach(m => {
+                const monthLabel = new Date(2025, m-1, 1).toLocaleString('default', { month: 'long' });
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm border mb-10 overflow-hidden">
+                        <div class="bg-slate-800 text-white p-4 font-bold uppercase text-[10px] tracking-widest">${monthLabel} 2025</div>
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-[10px] text-slate-400 font-bold uppercase">
+                                    <th class="p-4 w-28">Date</th>
+                                    ${activeRoles.map(r => `<th class="p-4 border-l">${r}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                for (let d = 1; d <= 31; d++) {
+                    const dObj = new Date(2025, m-1, d);
+                    if (dObj.getMonth() !== m-1) break;
+                    
+                    const targetDay = state.view === 'thursday-hall' ? 4 : 6;
+                    if (dObj.getDay() === targetDay) {
+                        const dateStr = dObj.toISOString().split('T')[0];
+                        html += `<tr class="border-b last:border-0">
+                            <td class="p-4 font-bold border-r bg-slate-50/30">${dateStr}</td>`;
+
+                        activeRoles.forEach(role => {
+                            // FLEXIBLE MATCHING
+                            const matches = state.data.filter(row => 
+                                row.date === dateStr && 
+                                row.role.includes(role.split('-')[0]) && 
+                                row.type.includes(state.view.split('-')[0])
+                            );
+
+                            html += `<td class="p-2 border-l align-top min-w-[120px]">
+                                ${matches.map(m => `<div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-[10px] mb-1">${m.name}</div>`).join('')}
+                                ${matches.length === 0 ? '<div class="text-[10px] text-slate-300 p-2">+ OPEN</div>' : ''}
+                            </td>`;
+                        });
+                        html += `</tr>`;
+                    }
+                }
+                html += `</tbody></table></div>`;
+            });
+            root.innerHTML = html;
+        }
+
+        init();
     </script>
 </body>
 </html>

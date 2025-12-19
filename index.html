@@ -610,7 +610,7 @@
                         if (setting.setting_type === 'note') {
                             this.dateNotes[setting.setting_key] = setting.setting_value;
                         } else if (setting.setting_type === 'giveaway') {
-                            this.giveawayDates[setting.setting_key] = setting.setting_value === 'true';
+                         this.giveawayDates[setting.setting_key] = (setting.setting_value === 'true' || setting.setting_value === 'TRUE' || setting.setting_value === true);
                         }
                     });
                     

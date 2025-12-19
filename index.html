@@ -1195,12 +1195,17 @@ generatePeriods() {
                 this.render();
             },
 
-            render() {
-                try {
-                    const appEl = document.getElementById('app');
-                    if (!appEl) return;
-
-                    if (this.isLoading) {
+     render() {
+    try {
+        const appEl = document.getElementById('app');
+        if (!appEl) return;
+        
+        // Safety check: don't render if periods aren't generated yet
+        if (!this.periods || this.periods.length === 0) {
+            return;
+        }
+        
+        if (this.isLoading) {
                         appEl.innerHTML = `
                             <div class="min-h-screen flex items-center justify-center">
                                 <div class="text-center">

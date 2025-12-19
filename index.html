@@ -906,7 +906,10 @@ generatePeriods() {
             },
 
             getDatesForPeriod() {
-                const period = this.periods.find(p => p.id === this.selectedPeriod);
+      const period = (this.periods || []).find(p => p.id === this.selectedPeriod);
+if (!period) {
+    return '<div class="p-8 text-center">Loading periods...</div>';
+}
                 if (!period) return [];
                 const dates = [];
                 
@@ -1369,15 +1372,24 @@ generatePeriods() {
                 `;
             },
 
-            renderRoster() {
-                const specialEvent = this.specialEvents.find(e => e.id === this.currentView);
-                const isSpecialEvent = !!specialEvent;
-                
-                const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
-                const dates = this.getDatesForPeriod();
-                const roles = this.getVisibleRoles(this.currentView);
-                const nextShiftStats = this.getNextShiftStats();
-                const nextShiftDate = this.getNextUpcomingDate();
+          renderRoster() {
+    // Safety checks
+    if (!this.periods || this.periods.length === 0) {
+        return '<div class="p-8 text-center">⏳ Loading periods...</div>';
+    }
+    
+    const specialEvent = (this.specialEvents || []).find(e => e.id === this.currentView);
+    const isSpecialEvent = !!specialEvent;
+    
+    const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
+    if (!currentPeriod) {
+        return '<div class="p-8 text-center">⚠️ Period not found. Please refresh.</div>';
+    }
+    
+    const dates = this.getDatesForPeriod();
+    const roles = this.getVisibleRoles(this.currentView);
+    const nextShiftStats = this.getNextShiftStats();
+    const nextShiftDate = this.getNextUpcomingDate();
 
                 const viewTitle = isSpecialEvent ? specialEvent.name :
                                  this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 

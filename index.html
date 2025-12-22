@@ -287,25 +287,29 @@ generatePeriods() {
         }
         
         const months = [];
+        let endYear = year; // Track the year for the last month in quarter
+        
         for (let i = 0; i < 3; i++) {
             let month = startMonth + i;
-            let thisYear = year;
             if (month > 12) {
                 month -= 12;
-                thisYear++;
+                endYear = year + 1; // If we rolled over, the end is next year
             }
             months.push(month);
         }
         
-        const label = `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${year}`;
-        const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${year}`;
+        // Use the end year for the label (since that's what matters for display)
+        const labelYear = endYear;
+        const label = `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${labelYear}`;
+        const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${labelYear}`;
         
-        periods.push({ id, label, months: months.slice(0, 3), year });
+        periods.push({ id, label, months, year: labelYear });
     }
     
     this.periods = periods;
-    this.selectedPeriod = periods[0].id; // Default to first (current) period
+    this.selectedPeriod = periods[0].id;
 },
+
             roles: {
                 'thursday-hall': [
                     { id: 'managers', name: 'Managers', time: '9:45am-1:30pm', capacity: 2 },

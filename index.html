@@ -308,12 +308,12 @@ generatePeriods() {
         
         const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${firstYear}`;
         
-        periods.push({ 
-            id, 
-            label, 
-            months, 
-            year: firstYear // Use first month's year for the period
-        });
+       periods.push({ 
+    id, 
+    label, 
+    months, 
+    year: firstYear // Use first month's year for the period
+});
     }
     
     this.periods = periods;
@@ -917,56 +917,59 @@ getVisibleRoles(view) {
                 
                 return (h + 6) % 7;
             },
-
-            getDatesForPeriod() {
-      const period = (this.periods || []).find(p => p.id === this.selectedPeriod);
-if (!period) {
-    return '<div class="p-8 text-center">Loading periods...</div>';
-}
-                if (!period) return [];
-                const dates = [];
+getDatesForPeriod() {
+    const period = (this.periods || []).find(p => p.id === this.selectedPeriod);
+    if (!period) return [];
+    
+    const dates = [];
+    
+    if (this.currentView === 'weekly-tasks') {
+        const targetDay = 3;
+        period.months.forEach((month, index) => {
+            // Get the correct year for this month from the years array we stored
+            const year = period.years ? period.years[index] : period.year;
+            
+            for (let day = 1; day <= 31; day++) {
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
-                if (this.currentView === 'weekly-tasks') {
-                    const targetDay = 3;
-                    period.months.forEach(month => {
-                        for (let day = 1; day <= 31; day++) {
-                            const dateStr = `${period.year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                            
-                            const testDate = new Date(period.year, month - 1, day);
-                            if (testDate.getMonth() !== month - 1) break;
-                            
-                            if (this.getDayOfWeek(dateStr) === targetDay) {
-                                const wed = new Date(period.year, month - 1, day);
-                                const thurs = new Date(period.year, month - 1, day + 1);
-                                
-                                dates.push({ 
-                                    date: dateStr, 
-                                    label: `${formatSafeDate(dateStr)} - ${formatSafeDate(thurs.toISOString().split('T')[0])}` 
-                                });
-                            }
-                        }
-                    });
-                } else {
-                    const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
-                    period.months.forEach(month => {
-                        for (let day = 1; day <= 31; day++) {
-                            const dateStr = `${period.year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                            
-                            const testDate = new Date(period.year, month - 1, day);
-                            if (testDate.getMonth() !== month - 1) break;
-                            
-                            if (this.getDayOfWeek(dateStr) === targetDay) {
-                                const date = new Date(period.year, month - 1, day);
-                                dates.push({
-                                    date: dateStr,
-                                    label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
-                                });
-                            }
-                        }
+                const testDate = new Date(year, month - 1, day);
+                if (testDate.getMonth() !== month - 1) break;
+                
+                if (this.getDayOfWeek(dateStr) === targetDay) {
+                    const wed = new Date(year, month - 1, day);
+                    const thurs = new Date(year, month - 1, day + 1);
+                    
+                    dates.push({ 
+                        date: dateStr, 
+                        label: `${formatSafeDate(dateStr)} - ${formatSafeDate(thurs.toISOString().split('T')[0])}` 
                     });
                 }
-                return dates;
-            },
+            }
+        });
+    } else {
+        const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
+        period.months.forEach((month, index) => {
+            // Get the correct year for this month from the years array
+            const year = period.years ? period.years[index] : period.year;
+            
+            for (let day = 1; day <= 31; day++) {
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                const testDate = new Date(year, month - 1, day);
+                if (testDate.getMonth() !== month - 1) break;
+                
+                if (this.getDayOfWeek(dateStr) === targetDay) {
+                    const date = new Date(year, month - 1, day);
+                    dates.push({
+                        date: dateStr,
+                        label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                    });
+                }
+            }
+        });
+    }
+    return dates;
+}
 
             generateReport() {
                 const stats = {

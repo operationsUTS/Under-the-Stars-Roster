@@ -308,11 +308,12 @@ generatePeriods() {
         
         const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${firstYear}`;
         
-       periods.push({ 
+periods.push({ 
     id, 
     label, 
-    months, 
-    year: firstYear // Use first month's year for the period
+    months,
+    years,  
+    year: firstYear
 });
     }
     

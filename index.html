@@ -269,50 +269,56 @@ periods: [],
 // Generate periods dynamically starting from current month
 generatePeriods() {
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // 1-12
+    let currentYear = today.getFullYear();
+    let currentMonth = today.getMonth() + 1; // 1-12
     
     const periods = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    // Generate quarters starting from current month, going forward 12 months
-    for (let offset = 0; offset < 12; offset += 3) {
-        let startMonth = currentMonth + offset;
-        let year = currentYear;
-        
-        // Handle year rollover
-        while (startMonth > 12) {
-            startMonth -= 12;
-            year++;
-        }
-        
+    // Generate 4 quarters (12 months) starting from current month
+    for (let quarterNum = 0; quarterNum < 4; quarterNum++) {
         const months = [];
-        let endYear = year; // Track the year for the last month in quarter
+        const years = [];
         
+        // Generate 3 months for this quarter
         for (let i = 0; i < 3; i++) {
-            let month = startMonth + i;
-            if (month > 12) {
+            let month = currentMonth + (quarterNum * 3) + i;
+            let year = currentYear;
+            
+            // Handle year rollover
+            while (month > 12) {
                 month -= 12;
-                endYear = year + 1; // If we rolled over, the end is next year
+                year++;
             }
+            
             months.push(month);
+            years.push(year);
         }
         
- // Build label with proper year handling
-const startYear = year;
-const label = startYear === endYear 
-    ? `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${startYear}`
-    : `${monthNames[months[0]-1]} ${startYear} - ${monthNames[months[2]-1]} ${endYear}`;
-    
-const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${startYear}`;
-
-periods.push({ id, label, months, year: startYear });
+        // Build label showing year transition if needed
+        const firstYear = years[0];
+        const lastYear = years[2];
+        
+        let label;
+        if (firstYear === lastYear) {
+            label = `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${firstYear}`;
+        } else {
+            label = `${monthNames[months[0]-1]} ${firstYear} - ${monthNames[months[2]-1]} ${lastYear}`;
+        }
+        
+        const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${firstYear}`;
+        
+        periods.push({ 
+            id, 
+            label, 
+            months, 
+            year: firstYear // Use first month's year for the period
+        });
     }
     
     this.periods = periods;
     this.selectedPeriod = periods[0].id;
 },
-
             roles: {
                 'thursday-hall': [
                     { id: 'managers', name: 'Managers', time: '9:45am-1:30pm', capacity: 2 },

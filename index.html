@@ -340,8 +340,8 @@ generatePeriods() {
                 this.render();
             },
 
-            getVisibleRoles(view) {
-                const event = this.specialEvents.find(e => e.id === view);
+getVisibleRoles(view) {
+    const event = (this.specialEvents || []).find(e => e.id === view);
                 if (event) {
                     return event.roles;
                 }

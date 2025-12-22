@@ -298,12 +298,15 @@ generatePeriods() {
             months.push(month);
         }
         
-        // Use the end year for the label (since that's what matters for display)
-        const labelYear = endYear;
-        const label = `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${labelYear}`;
-        const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${labelYear}`;
-        
-        periods.push({ id, label, months, year: labelYear });
+ // Build label with proper year handling
+const startYear = year;
+const label = startYear === endYear 
+    ? `${monthNames[months[0]-1]} - ${monthNames[months[2]-1]} ${startYear}`
+    : `${monthNames[months[0]-1]} ${startYear} - ${monthNames[months[2]-1]} ${endYear}`;
+    
+const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${startYear}`;
+
+periods.push({ id, label, months, year: startYear });
     }
     
     this.periods = periods;

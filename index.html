@@ -262,11 +262,32 @@
         };
         
         const app = {
-            currentView: 'welcome',
-            selectedPeriod: null, // Will be set by generatePeriods()
-            periods: [],
-            newEventRoles: null,  // <-- ADD ONLY THIS LINE
-            
+    currentView: 'welcome',
+    selectedPeriod: null,
+    periods: [],
+    newEventRoles: null,
+    specialEvents: [],         
+    signups: {},              
+    dateNotes: {},          
+    giveawayDates: {},        
+    connectionStatus: null,   
+    isLoading: false,         
+    isInitialized: false,    
+    isAdmin: false,          
+    adminView: 'dashboard',   
+    collapsedMonths: {},      
+    showModal: false,         
+    volunteerName: '',        
+    selectedSlot: null,       
+    editingSignup: null,      
+    editingEvent: null,       
+    showMySignups: false,     
+    mySignupsList: [],        
+    searchName: '',           
+    backupCount: 5,           
+    
+    // Generate periods dynamically starting from current month
+    generatePeriods() {
             // Generate periods dynamically starting from current month
             generatePeriods() {
                 const today = new Date();

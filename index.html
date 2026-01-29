@@ -2106,9 +2106,7 @@ renderAdmin() {
                     ` : ''}
                 </div>
             </div>
-        </div>
-    `;
-},
+
                                     <div class="mb-6">
                                         <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
                                         
@@ -2428,7 +2426,6 @@ document.addEventListener('click', (e) => {
         if (content) content.classList.toggle('collapsed');
     }
 }); // This is the ONLY closing for the click listener
-
 `).join('')}
             </div>
         </div> 
@@ -2436,7 +2433,7 @@ document.addEventListener('click', (e) => {
   }
 };
 
-// CLICK LOGIC (Handles collapsing headers)
+// CLICK LOGIC
 document.addEventListener('click', (e) => {
     if (e.target.closest('.month-header')) {
         const header = e.target.closest('.month-header');
@@ -2450,9 +2447,8 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// START THE APP
+// START
 app.init();
 </script>
 </body>
-</html>
 </html>

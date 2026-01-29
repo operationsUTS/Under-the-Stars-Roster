@@ -1562,7 +1562,7 @@ getDatesForPeriod() {
             appEl.innerHTML = this.renderAdmin();
         } else {
             // Your NEW Logic: Different views for Special Events
-            const isSpecialEvent = (this.specialEvents || []).some(e => e.id === this.currentView);
+           const isSpecialEvent = (this.specialEvents || []).some(e => e.id === this.currentView);
             
             if (isSpecialEvent && window.innerWidth <= 768) {
                 appEl.innerHTML = this.renderMobileView(); 
@@ -1575,7 +1575,8 @@ getDatesForPeriod() {
         document.getElementById('app').innerHTML = `<div class="p-6 text-red-500">⚠️ Display Error. Please refresh.</div>`;
     }
 },
-            renderMySignups() {
+
+renderMySignups() {
                 return `
                     <div class="min-h-screen p-4">
                         <div class="max-w-4xl mx-auto">

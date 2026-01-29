@@ -2422,49 +2422,38 @@ getDatesForPeriod() {
                                     title="${event.visible ? 'Visible to volunteers' : 'Hidden from volunteers'}">
                                 ${event.visible ? '👁️ Visible' : '👁️‍🗨️ Hidden'}
                             </button>
-                            <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
-                                    class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Stats -->
-                    <div class="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
-                        ${event.dates.map(dateStr => {
-                            const signups = app.signups[event.id]?.[dateStr] || {};
-                            const totalSlots = event.roles.reduce((sum, r) => sum + r.capacity, 0);
-                            const filledSlots = Object.values(signups).reduce((sum, arr) => sum + arr.length, 0);
-                            const coverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
-                            
-                            const [y, m, day] = dateStr.split('-').map(Number);
-                            const date = new Date(y, m - 1, day);
-                            const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
-                            
-                            return `
-                                <div class="p-2 bg-gray-50 rounded">
-                                    <div class="font-semibold text-gray-700">${dateLabel}</div>
-                                    <div class="text-xs ${coverage >= 90 ? 'text-green-600' : coverage >= 60 ? 'text-yellow-600' : 'text-red-600'}">
-                                        ${filledSlots}/${totalSlots} (${coverage}%)
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    </div>
-`}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-        };
+                          <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
+    class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
+    🗑️
+</button>
+</div>
+</div>
+
+<!-- Quick Stats -->
+<div class="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
+    ${event.dates.map(dateStr => {
+        const signups = app.signups[event.id]?.[dateStr] || {};
+        const totalSlots = event.roles.reduce((sum, r) => sum + r.capacity, 0);
+        const filledSlots = Object.values(signups).reduce((sum, arr) => sum + arr.length, 0);
+        const coverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
         
-          app.init();
-  <script>
+        const [y, m, day] = dateStr.split('-').map(Number);
+        const date = new Date(y, m - 1, day);
+        const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+        
+        return `
+            <div class="p-2 bg-gray-50 rounded">
+                <div class="font-semibold text-gray-700">${dateLabel}</div>
+                <div class="text-xs ${coverage >= 90 ? 'text-green-600' : coverage >= 60 ? 'text-yellow-600' : 'text-red-600'}">
+                    ${filledSlots}/${totalSlots} (${coverage}%)
+                </div>
+            </div>
+        `;
+    }).join('')}
+</div>
+</div> <!-- Closing div for Quick Stats -->
+
+<script>
 document.addEventListener('click', (e) => {
     // Month headers
     if (e.target.closest('.month-header')) {
@@ -2484,6 +2473,6 @@ document.addEventListener('click', (e) => {
 });
 </script>
 
-</body>
-
-</html>
+<script>
+    app.init();
+</script>

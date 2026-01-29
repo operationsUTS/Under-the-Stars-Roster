@@ -707,72 +707,124 @@ getVisibleRoles(view) {
                 }
             },
 
-            loadSpecialEvents() {
-                const savedEvents = localStorage.getItem('uts-special-events');
-                if (savedEvents) {
-                    try {
-                        this.specialEvents = JSON.parse(savedEvents);
-                    } catch (e) {
-                        console.error('Error parsing special events:', e);
-                        this.specialEvents = [];
-                    }
-                }
-            },
+           loadSpecialEvents() {
+    const savedEvents = localStorage.getItem('uts-special-events');
+    if (savedEvents) {
+        try {
+            this.specialEvents = JSON.parse(savedEvents);
+        } catch (e) {
+            console.error('Error parsing special events:', e);
+            this.specialEvents = [];
+        }
+    } else {
+        this.specialEvents = [];
+    }
+},
 
-            async saveSpecialEvents() {
-                localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
-                this.createBackup();
-            },
+async saveSpecialEvents() {
+    localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
+    this.createBackup();
+},
 
-            async createSpecialEvent(name, dates, roles, visible = true) {
-                const event = {
-                    id: 'event-' + Date.now().toString(),
-                    name: name.trim(),
-                    dates: dates,
-                    roles: roles,
-                    visible: visible,
-                    created: new Date().toISOString()
-                };
-                this.specialEvents.push(event);
-                
-                this.signups[event.id] = {};
-                dates.forEach(dateStr => {
-                    this.signups[event.id][dateStr] = {};
-                    roles.forEach(role => {
-                        this.signups[event.id][dateStr][role.id] = [];
-                    });
-                });
-                
-                await this.saveSpecialEvents();
-                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                this.showNotification(`Event "${name}" created!`);
-                return event.id;
-            },
+async createSpecialEvent(name, dates, roles, visible = true) {
+    const event = {
+        id: 'event-' + Date.now().toString(),
+        name: name.trim(),
+        dates: dates,
+        roles: roles,
+        visible: visible,
+        created: new Date().toISOString()
+    };
+    this.specialEvents.push(event);
+    
+    this.signups[event.id] = {};
+    dates.forEach(dateStr => {
+        this.signups[event.id][dateStr] = {};
+        roles.forEach(role => {
+            this.signups[event.id][dateStr][role.id] = [];
+        });
+    });
+    
+    await this.saveSpecialEvents();
+    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+    this.showNotification(`Event "${name}" created!`);
+    return event.id;
+},
 
-            async deleteSpecialEvent(eventId) {
-                const event = this.specialEvents.find(e => e.id === eventId);
-                if (!event) return;
-                
-                if (!confirm(`Delete event "${event.name}"? This will remove all volunteer signups for this event.`)) return;
-                
-                this.specialEvents = this.specialEvents.filter(e => e.id !== eventId);
-                
-                delete this.signups[eventId];
-                
-                await this.saveSpecialEvents();
-                localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-                this.showNotification('Event deleted');
-            },
+async deleteSpecialEvent(eventId) {
+    const event = this.specialEvents.find(e => e.id === eventId);
+    if (!event) return;
+    
+    if (!confirm(`Delete event "${event.name}"? This will remove all volunteer signups for this event.`)) return;
+    
+    this.specialEvents = this.specialEvents.filter(e => e.id !== eventId);
+    delete this.signups[eventId];
+    
+    await this.saveSpecialEvents();
+    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+    this.showNotification('Event deleted');
+},
 
-            async toggleEventVisibility(eventId) {
-                const event = this.specialEvents.find(e => e.id === eventId);
-                if (!event) return;
-                
-                event.visible = !event.visible;
-                await this.saveSpecialEvents();
-                this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
-            },
+async editSpecialEvent(eventId) {
+    const event = this.specialEvents.find(e => e.id === eventId);
+    if (!event) return;
+    
+    this.editingEvent = eventId;
+    this.newEventRoles = JSON.parse(JSON.stringify(event.roles));
+    this.render();
+},
 
+async updateSpecialEvent(eventId, name, dates, roles, visible) {
+    const event = this.specialEvents.find(e => e.id === eventId);
+    if (!event) return;
+    
+    event.name = name.trim();
+    event.dates = dates;
+    event.roles = roles;
+    event.visible = visible;
+    
+    this.signups[eventId] = this.signups[eventId] || {};
+    dates.forEach(dateStr => {
+        this.signups[eventId][dateStr] = this.signups[eventId][dateStr] || {};
+        roles.forEach(role => {
+            if (!this.signups[eventId][dateStr][role.id]) {
+                this.signups[eventId][dateStr][role.id] = [];
+            }
+        });
+    });
+    
+    await this.saveSpecialEvents();
+    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+    this.showNotification(`Event "${name}" updated!`);
+},
+
+addEventDate() {
+    const container = document.getElementById('eventDates');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2';
+    
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.className = 'event-date-input flex-1 p-2 border rounded-lg';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.className = 'px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200';
+    removeBtn.onclick = function() { div.remove(); };
+    
+    div.appendChild(dateInput);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+},
+
+async toggleEventVisibility(eventId) {
+    const event = this.specialEvents.find(e => e.id === eventId);
+    if (!event) return;
+    
+    event.visible = !event.visible;
+    await this.saveSpecialEvents();
+    this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
+},
             async saveNote(view, dateStr, note) {
                 const key = `${view}-${dateStr}`;
                 

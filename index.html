@@ -1851,8 +1851,9 @@ getDatesForPeriod() {
                                         
                                         <div class="month-content ${isCollapsed ? 'collapsed' : ''}">
                                             <div class="bg-white overflow-hidden">
-                                                <div class="table-container">
-                                                    <table class="w-full">
+                                               <div class="desktop-table-view">
+    <div class="table-container">
+        <table class="w-full">
                                                         <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
                                                             <tr>
                                                                 <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
@@ -1965,6 +1966,86 @@ getDatesForPeriod() {
                                                     </table>
                                                 </div>
                                             </div>
+
+                                            </div> <!-- Closes desktop-table-view -->
+
+<!-- MOBILE CARD VIEW - ADD THIS -->
+<div class="mobile-card-view">
+    ${monthData.dates.map((d) => {
+        const dateClass = this.getDateClass(d.date);
+        const isNextShift = d.date === nextShiftDate;
+        const dateKey = `mobile-${monthKey}-${d.date}`;
+        const isDateCollapsed = this.collapsedMonths[dateKey];
+        
+        return `
+            <div class="date-card ${dateClass}">
+                <div class="date-card-header ${isDateCollapsed ? 'collapsed' : ''}" 
+                     onclick="app.collapsedMonths['${dateKey}'] = !app.collapsedMonths['${dateKey}']; app.render();">
+                    <div>
+                        ${isNextShift ? '<div class="next-shift-badge" style="display:inline-block;margin-right:8px;">NEXT</div>' : ''}
+                        <span style="font-size:18px;">${d.label}</span>
+                    </div>
+                    <span style="font-size:24px;">${isDateCollapsed ? '▶' : '▼'}</span>
+                </div>
+                
+                <div class="date-card-content ${isDateCollapsed ? 'collapsed' : ''}">
+                    ${roles.map(role => {
+                        const isGiveawayRole = role.id === 'giveaway';
+                        const giveawayEnabled = this.isGiveawayEnabled(this.currentView, d.date);
+                        
+                        if (isGiveawayRole && !giveawayEnabled) {
+                            return `
+                                <div class="role-card-mobile" style="background:#f3f4f6;color:#9ca3af;text-align:center;">
+                                    <h4>${role.name}</h4>
+                                    <p style="font-style:italic;font-size:14px;">Not available</p>
+                                </div>
+                            `;
+                        }
+                        
+                        const signups = this.getSignups(this.currentView, d.date, role.id);
+                        const slotsLeft = role.capacity - signups.length;
+                        
+                        return `
+                            <div class="role-card-mobile">
+                                <h4>${role.name}</h4>
+                                <div class="time">${role.time} • ${slotsLeft} of ${role.capacity} spots left</div>
+                                
+                                ${signups.length > 0 ? `
+                                    <div class="volunteer-list-mobile">
+                                        ${signups.map(signup => `
+                                            <div class="volunteer-item-mobile">
+                                                <span>✓ ${signup.name}</span>
+                                                <button onclick="app.removeSignup('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                        style="background:none;border:none;color:#ef4444;font-size:18px;cursor:pointer;">✕</button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                
+                                <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+                                        class="signup-btn-mobile ${slotsLeft > 0 ? 'available' : 'full'}">
+                                    ${slotsLeft > 0 ? `✋ Sign Me Up! (${slotsLeft} left)` : '⚠️ FULL - Add Anyway?'}
+                                </button>
+                            </div>
+                        `;
+                    }).join('')}
+                    
+                    ${this.isAdmin ? `
+                        <div class="role-card-mobile" style="background:#eff6ff;border-color:#3b82f6;">
+                            <h4 style="color:#1e40af;">📝 Admin Notes</h4>
+                            <input type="text" 
+                                   placeholder="Add note..." 
+                                   value="${this.getNote(this.currentView, d.date)}"
+                                   onchange="app.saveNote('${this.currentView}', '${d.date}', this.value)"
+                                   style="width:100%;padding:12px;border:2px solid #3b82f6;border-radius:8px;font-size:16px;" />
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('')}
+</div>
+<!-- END MOBILE CARD VIEW -->
                                         </div>
                                     </div>
                                 `;

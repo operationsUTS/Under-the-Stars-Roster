@@ -1856,64 +1856,210 @@ getDatesForPeriod() {
                                             </div>
                                         </div>
                                     </div>
-                                ` : `
-                                    <div>
-                                        <div class="flex justify-between items-center mb-4">
-                                            <h3 class="text-2xl font-bold">Special Events</h3>
-                                            <button onclick="app.editingEvent='new'; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                                ➕ Create Event
-                                            </button>
-                                        </div>
-${this.editingEvent === 'new' ? `
-                                        <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                                            <h4 class="font-bold mb-4">Create New Event</h4>
-                                            <div class="space-y-3">
-                                                <input type="text" id="newEventName" placeholder="Event name" class="w-full p-2 border rounded-lg" />
-                                                <input type="date" id="newEventDate" class="w-full p-2 border rounded-lg" />
-                                                <div class="flex gap-2">
-                                                    <button onclick="
-                                                        const name = document.getElementById('newEventName').value;
-                                                        const date = document.getElementById('newEventDate').value;
-                                                        if(name && date) {
-                                                            app.createSpecialEvent(name, [date], [{id:'volunteers',name:'Volunteers',time:'TBD',capacity:10}]);
-                                                            app.editingEvent=null;
-                                                            app.render();
-                                                        } else {
-                                                            alert('Please fill in all fields');
-                                                        }
-                                                    " class="flex-1 bg-indigo-600 text-white py-2 rounded-lg">Create</button>
-                                                    <button onclick="app.editingEvent=null; app.render();" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancel</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ` : ''}
+                                `` : `
+    <div>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-2xl font-bold">Special Events</h3>
+            <button onclick="app.editingEvent='new'; app.newEventRoles=[{id:'managers',name:'Managers',time:'',capacity:2},{id:'volunteers',name:'Volunteers',time:'',capacity:10}]; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                ➕ Create Event
+            </button>
+        </div>
 
-                                    <div class="space-y-4">
-                                        ${this.specialEvents.map(event => `
-                                            <div class="p-4 border rounded-lg ${event.visible ? 'bg-white' : 'bg-gray-50'}">
-                                                <div class="flex justify-between items-start">
-                                                    <div>
-                                                        <h4 class="text-lg font-bold">${event.name}</h4>
-                                                        <p class="text-sm text-gray-600">${event.dates.join(', ')}</p>
-                                                    </div>
-                                                    <div class="flex gap-2">
-                                                        <button onclick="app.toggleEventVisibility('${event.id}')" class="p-2 ${event.visible ? 'text-green-600' : 'text-gray-400'} rounded">
-                                                            ${event.visible ? '👁️' : '👁️‍🗨️'}
-                                                        </button>
-                                                        <button onclick="app.deleteSpecialEvent('${event.id}'); app.render();" class="p-2 text-red-600 rounded">🗑️</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            `}
+        ${this.editingEvent === 'new' ? `
+            <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <h4 class="font-bold mb-4 text-lg">Create New Event</h4>
+                <div class="space-y-4">
+                    <!-- Event Name -->
+                    <div>
+                        <label class="block font-semibold text-sm text-gray-700 mb-1">Event Name</label>
+                        <input type="text" id="newEventName" placeholder="e.g. Monthly Bulk Cook" class="w-full p-2 border rounded-lg" />
+                    </div>
+                    
+                    <!-- Event Dates -->
+                    <div class="border-2 border-dashed border-blue-300 rounded-lg p-4 bg-white">
+                        <label class="font-semibold text-sm text-blue-900 mb-2 block">Event Dates</label>
+                        <div id="eventDates" class="space-y-2 mb-3">
+                            <div class="flex gap-2">
+                                <input type="date" class="event-date-input flex-1 p-2 border rounded-lg" />
+                                <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200">✕</button>
+                            </div>
                         </div>
+                        <button onclick="
+                            const container = document.getElementById('eventDates');
+                            const div = document.createElement('div');
+                            div.className = 'flex gap-2';
+                            div.innerHTML = '<input type=\\"date\\" class=\\"event-date-input flex-1 p-2 border rounded-lg\\" /><button onclick=\\"this.parentElement.remove();\\" class=\\"px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200\\">✕</button>';
+                            container.appendChild(div);
+                        " class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200">
+                            ➕ Add Another Date
+                        </button>
+                    </div>
+                    
+                    <!-- Roles Configuration -->
+                    <div class="border-2 border-dashed border-purple-300 rounded-lg p-4 bg-white">
+                        <label class="font-semibold text-sm text-purple-900 mb-3 block">Volunteer Roles</label>
+                        <div id="eventRoles" class="space-y-3 mb-3">
+                            ${(this.newEventRoles || []).map((role, idx) => `
+                                <div class="role-config-item flex gap-2 p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                               value="${role.name}" 
+                                               placeholder="Role name (e.g. Managers)" 
+                                               class="role-name w-full p-2 border rounded mb-2 font-semibold"
+                                               onchange="app.newEventRoles[${idx}].name = this.value; app.newEventRoles[${idx}].id = this.value.toLowerCase().replace(/\\s+/g, '-');" />
+                                        <div class="flex gap-2">
+                                            <input type="text" 
+                                                   value="${role.time}" 
+                                                   placeholder="Time (e.g. 9am-12pm)" 
+                                                   class="role-time flex-1 p-2 border rounded text-sm"
+                                                   onchange="app.newEventRoles[${idx}].time = this.value;" />
+                                            <input type="number" 
+                                                   value="${role.capacity}" 
+                                                   placeholder="Capacity" 
+                                                   min="1" 
+                                                   class="role-capacity w-20 p-2 border rounded text-sm"
+                                                   onchange="app.newEventRoles[${idx}].capacity = parseInt(this.value) || 1;" />
+                                        </div>
+                                    </div>
+                                    <button onclick="app.newEventRoles.splice(${idx}, 1); app.render();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 self-start">✕</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="
+                            if(!app.newEventRoles) app.newEventRoles = [];
+                            app.newEventRoles.push({id:'role-' + Date.now(), name:'', time:'', capacity:1});
+                            app.render();
+                        " class="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200">
+                            ➕ Add Another Role
+                        </button>
+                    </div>
+                    
+                    <!-- Visibility Toggle -->
+                    <div class="flex items-center gap-2 p-3 bg-white border rounded-lg">
+                        <input type="checkbox" id="eventVisible" checked class="w-4 h-4" />
+                        <label for="eventVisible" class="text-sm font-semibold">Show event on welcome screen</label>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button onclick="
+                            const name = document.getElementById('newEventName').value.trim();
+                            const dateInputs = document.querySelectorAll('.event-date-input');
+                            const dates = Array.from(dateInputs)
+                                .map(input => input.value)
+                                .filter(date => date)
+                                .sort();
+                            const visible = document.getElementById('eventVisible').checked;
+                            
+                            // Validate
+                            if(!name) {
+                                alert('Please enter an event name');
+                                return;
+                            }
+                            if(dates.length === 0) {
+                                alert('Please add at least one date');
+                                return;
+                            }
+                            
+                            // Prepare roles
+                            const roles = (app.newEventRoles || [])
+                                .filter(r => r.name.trim())
+                                .map(r => ({
+                                    id: r.id || r.name.toLowerCase().replace(/\\s+/g, '-'),
+                                    name: r.name.trim(),
+                                    time: r.time.trim() || 'TBD',
+                                    capacity: parseInt(r.capacity) || 1
+                                }));
+                            
+                            if(roles.length === 0) {
+                                alert('Please add at least one role');
+                                return;
+                            }
+                            
+                            // Create event
+                            app.createSpecialEvent(name, dates, roles, visible);
+                            app.editingEvent = null;
+                            app.newEventRoles = null;
+                            app.render();
+                        " class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold">
+                            ✓ Create Event
+                        </button>
+                        <button onclick="app.editingEvent=null; app.newEventRoles=null; app.render();" class="flex-1 bg-gray-300 py-3 rounded-lg hover:bg-gray-400 font-semibold">
+                            Cancel
+                        </button>
                     </div>
                 </div>
-            `;
-        }
-    };
+            </div>
+        ` : ''}
 
+        <div class="space-y-4">
+            ${this.specialEvents.length === 0 ? `
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-lg mb-2">No special events yet</p>
+                    <p class="text-sm">Click "Create Event" to add your first one</p>
+                </div>
+            ` : ''}
+            
+            ${this.specialEvents.map(event => `
+                <div class="p-4 border-2 rounded-lg ${event.visible ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-300'}">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h4 class="text-lg font-bold mb-1">${event.name}</h4>
+                            <p class="text-sm text-gray-600 mb-2">
+                                ${event.dates.length} date${event.dates.length !== 1 ? 's' : ''}: 
+                                ${event.dates.map(d => {
+                                    const [y, m, day] = d.split('-').map(Number);
+                                    const date = new Date(y, m - 1, day);
+                                    return date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+                                }).join(', ')}
+                            </p>
+                            <div class="flex gap-2 flex-wrap">
+                                ${event.roles.map(role => `
+                                    <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
+                                        ${role.name} (${role.capacity}) ${role.time !== 'TBD' ? '• ' + role.time : ''}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="flex gap-2 ml-4">
+                            <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
+                                    class="p-2 ${event.visible ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'} rounded hover:opacity-80" 
+                                    title="${event.visible ? 'Visible to volunteers' : 'Hidden from volunteers'}">
+                                ${event.visible ? '👁️ Visible' : '👁️‍🗨️ Hidden'}
+                            </button>
+                            <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
+                                    class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
+                        ${event.dates.map(dateStr => {
+                            const signups = app.signups[event.id]?.[dateStr] || {};
+                            const totalSlots = event.roles.reduce((sum, r) => sum + r.capacity, 0);
+                            const filledSlots = Object.values(signups).reduce((sum, arr) => sum + arr.length, 0);
+                            const coverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
+                            
+                            const [y, m, day] = dateStr.split('-').map(Number);
+                            const date = new Date(y, m - 1, day);
+                            const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+                            
+                            return `
+                                <div class="p-2 bg-gray-50 rounded">
+                                    <div class="font-semibold text-gray-700">${dateLabel}</div>
+                                    <div class="text-xs ${coverage >= 90 ? 'text-green-600' : coverage >= 60 ? 'text-yellow-600' : 'text-red-600'}">
+                                        ${filledSlots}/${totalSlots} (${coverage}%)
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+`}
     app.init();
 </script>

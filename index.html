@@ -565,13 +565,13 @@ getVisibleRoles(view) {
                 const { view, dateStr, roleId, signup } = this.editingSignup;
                 
                 try {
-                    await googleAPI.call('updateSignup', {
-                        id: signup.id,
-                        volunteer_name: newName.trim()
-                    });
-                    
-           await this.loadSignups();
-await this.loadSpecialEvents();
+        await googleAPI.call('updateSignup', {
+    id: signup.id,
+    volunteer_name: newName.trim()
+});
+
+await this.loadSignups();
+this.showNotification('Name updated successfully!');
                     
                 } catch (e) {
                     console.error('Error updating:', e);
@@ -627,13 +627,13 @@ await this.loadSpecialEvents();
                 const duration = type === 'success' ? 5000 : 3000;
                 setTimeout(() => notif.remove(), duration);
             },
-    
+ async init() {
     this.generatePeriods();
     this.isLoading = true;
     this.render();
     
     await this.loadSignups();
-    this.loadSpecialEvents();
+    await this.loadSpecialEvents();
     
     this.isLoading = false;
     this.isInitialized = true;
@@ -650,7 +650,6 @@ await this.loadSpecialEvents();
         }
     });
 },
-
             async loadSignups() {
                 try {
                     const response = await googleAPI.call('getSignups');

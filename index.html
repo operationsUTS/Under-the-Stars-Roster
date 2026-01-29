@@ -627,17 +627,6 @@ await this.loadSpecialEvents();
                 const duration = type === 'success' ? 5000 : 3000;
                 setTimeout(() => notif.remove(), duration);
             },
-
-        async init() {
-    // Force reload if old version
-    const storedVersion = localStorage.getItem('uts-app-version');
-    if (storedVersion && storedVersion !== APP_VERSION) {
-        console.log('New version detected, clearing cache...');
-        localStorage.clear();
-        window.location.reload(true);
-        return;
-    }
-    localStorage.setItem('uts-app-version', APP_VERSION);
     
     this.generatePeriods();
     this.isLoading = true;

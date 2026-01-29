@@ -1969,7 +1969,8 @@ getDatesForPeriod() {
 
                                             </div> <!-- Closes desktop-table-view -->
 
-<!-- MOBILE CARD VIEW - ADD THIS -->
+<!-- MOBILE CARD VIEW - SPECIAL EVENTS ONLY -->
+${isSpecialEvent ? `
 <div class="mobile-card-view">
     ${monthData.dates.map((d) => {
         const dateClass = this.getDateClass(d.date);
@@ -2046,6 +2047,7 @@ getDatesForPeriod() {
     }).join('')}
 </div>
 <!-- END MOBILE CARD VIEW -->
+` : ''}
                                         </div>
                                     </div>
                                 `;

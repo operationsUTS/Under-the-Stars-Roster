@@ -2351,7 +2351,7 @@ getDatesForPeriod() {
                                 const roles = (app.newEventRoles || [])
                                     .filter(r => r.name.trim())
                                     .map(r => ({
-                                        id: r.id || r.name.toLowerCase().replace(/\\s+/g, '-'),
+                                        id: r.id || r.name.toLowerCase().replace(/\s+/g, '-'),
                                         name: r.name.trim(),
                                         time: r.time.trim() || 'TBD',
                                         capacity: parseInt(r.capacity) || 1

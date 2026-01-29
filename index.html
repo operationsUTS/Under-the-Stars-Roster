@@ -260,18 +260,18 @@
                 }
             }
         };
-
+        
         const app = {
             currentView: 'welcome',
-        selectedPeriod: null, // Will be set by generatePeriods()
-periods: [],
-
-// Generate periods dynamically starting from current month
-generatePeriods() {
-    const today = new Date();
-    let currentYear = today.getFullYear();
-    let currentMonth = today.getMonth() + 1; // 1-12
-    
+            selectedPeriod: null, // Will be set by generatePeriods()
+            periods: [],
+            newEventRoles: null,  // <-- ADD ONLY THIS LINE
+            
+            // Generate periods dynamically starting from current month
+            generatePeriods() {
+                const today = new Date();
+                let currentYear = today.getFullYear();
+                let currentMonth = today.getMonth() + 1; // 1-12
     const periods = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     

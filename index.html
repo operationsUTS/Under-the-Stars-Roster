@@ -1532,50 +1532,49 @@ getDatesForPeriod() {
                 this.render();
             },
 
-     render() {
+  render() {
     try {
         const appEl = document.getElementById('app');
         if (!appEl) return;
         
-        // Safety check: don't render if periods aren't generated yet
-        if (!this.periods || this.periods.length === 0) {
+        // 1. Safety check
+        if (!this.periods || this.periods.length === 0) return;
+        
+        // 2. Loading Screen
+        if (this.isLoading) {
+            appEl.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+                    <div class="text-center p-8 bg-white rounded-lg shadow-xl">
+                        <div class="loading-spinner mx-auto mb-4"></div>
+                        <p class="text-gray-900 text-xl font-bold mb-2">Loading Under the Stars Roster</p>
+                        <p class="text-gray-600 text-sm">Loading signups and events...</p>
+                    </div>
+                </div>`;
             return;
         }
-        
-   if (this.isLoading) {
-    appEl.innerHTML = `
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
-            <div class="text-center p-8 bg-white rounded-lg shadow-xl">
-                <div class="loading-spinner mx-auto mb-4"></div>
-                <p class="text-gray-900 text-xl font-bold mb-2">Loading Under the Stars Roster</p>
-                <p class="text-gray-600 text-sm">Loading signups and events from Google Sheets...</p>
-                <p class="text-gray-500 text-xs mt-2">This may take 5-10 seconds</p>
-            </div>
-        </div>
-    `;
-    return;
-}
 
-                    if (this.showMySignups) {
-                        appEl.innerHTML = this.renderMySignups();
-                    } else if (this.currentView === 'welcome') {
-                        appEl.innerHTML = this.renderWelcome();
-                    } else if (this.currentView === 'admin') {
-                        appEl.innerHTML = this.renderAdmin();
-                    } else {
-                        appEl.innerHTML = this.renderRoster();
-                    }
-                } catch (error) {
-                    console.error("Render Error:", error);
-                    document.getElementById('app').innerHTML = `
-                        <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg mt-10 border-t-4 border-red-500">
-                            <h2 class="text-xl font-bold text-gray-900">⚠️ Load Error</h2>
-                            <p class="text-gray-500 text-sm mt-2">Error during display. Please refresh.</p>
-                        </div>
-                    `;
-                }
-            },
-
+        // 3. View Logic
+        if (this.showMySignups) {
+            appEl.innerHTML = this.renderMySignups();
+        } else if (this.currentView === 'welcome') {
+            appEl.innerHTML = this.renderWelcome();
+        } else if (this.currentView === 'admin') {
+            appEl.innerHTML = this.renderAdmin();
+        } else {
+            // Your NEW Logic: Different views for Special Events
+            const isSpecialEvent = (this.specialEvents || []).some(e => e.id === this.currentView);
+            
+            if (isSpecialEvent && window.innerWidth <= 768) {
+                appEl.innerHTML = this.renderMobileView(); 
+            } else {
+                appEl.innerHTML = this.renderRoster();
+            }
+        }
+    } catch (error) {
+        console.error("Render Error:", error);
+        document.getElementById('app').innerHTML = `<div class="p-6 text-red-500">⚠️ Display Error. Please refresh.</div>`;
+    }
+},
             renderMySignups() {
                 return `
                     <div class="min-h-screen p-4">
@@ -1986,7 +1985,7 @@ getDatesForPeriod() {
                                                 </div>
                                             </div>
 
-                                            </div> <!-- Closes desktop-table-view -->
+                                            </div> 
                                             ${isSpecialEvent ? 
     '<div class="mobile-special-event-view">' +
     monthData.dates.map((d) => {
@@ -2027,12 +2026,11 @@ html += '</button>'; // Close the signup button div
 html += '</div>'; // Close the role div
 }); // Closing the loop
 html += `
-    </div> <!-- Closing the last div properly -->
+
 `;
 
 return html; // Ensure you return the final HTML string
-
-<!-- Modal section -->
+        
 ${this.showModal ? `
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this){app.showModal=false; app.render();}">
         <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
@@ -2074,7 +2072,6 @@ ${this.showModal ? `
     </div>
 ` : ''}
 
-<!-- Admin Dashboard Render Section -->
 ${this.renderAdmin()}
 
 : ''}
@@ -2302,7 +2299,7 @@ ${this.renderAdmin()}
                 <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
                     <h4 class="font-bold mb-4 text-lg">${isNew ? 'Create New Event' : 'Edit Event'}</h4>
                     <div class="space-y-4">
-                        <!-- Event Name -->
+                
                         <div>
                             <label class="block font-semibold text-sm text-gray-700 mb-1">Event Name</label>
                             <input type="text" id="newEventName" placeholder="e.g. Monthly Bulk Cook" 
@@ -2310,7 +2307,6 @@ ${this.renderAdmin()}
                                    class="w-full p-2 border rounded-lg" />
                         </div>
                         
-                        <!-- Event Dates -->
                         <div class="border-2 border-dashed border-blue-300 rounded-lg p-4 bg-white">
                             <label class="font-semibold text-sm text-blue-900 mb-2 block">Event Dates</label>
                             <div id="eventDates" class="space-y-2 mb-3">
@@ -2331,7 +2327,6 @@ ${this.renderAdmin()}
                             </button>
                         </div>
                         
-                        <!-- Roles Configuration -->
                         <div class="border-2 border-dashed border-purple-300 rounded-lg p-4 bg-white">
                             <label class="font-semibold text-sm text-purple-900 mb-3 block">Volunteer Roles</label>
                             <div id="eventRoles" class="space-y-3 mb-3">
@@ -2370,13 +2365,11 @@ ${this.renderAdmin()}
                             </button>
                         </div>
                         
-                        <!-- Visibility Toggle -->
                         <div class="flex items-center gap-2 p-3 bg-white border rounded-lg">
                             <input type="checkbox" id="eventVisible" ${isNew || event.visible ? 'checked' : ''} class="w-4 h-4" />
                             <label for="eventVisible" class="text-sm font-semibold">Show event on welcome screen</label>
                         </div>
-                        
-                        <!-- Action Buttons -->
+                    
                         <div class="flex gap-2">
                             <button onclick="
                                 const name = document.getElementById('newEventName').value.trim();
@@ -2477,7 +2470,6 @@ ${this.renderAdmin()}
 </div>
 </div>
 
-<!-- Quick Stats -->
 <div class="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
     ${event.dates.map(dateStr => {
         const signups = app.signups[event.id]?.[dateStr] || {};
@@ -2499,7 +2491,7 @@ ${this.renderAdmin()}
         `;
     }).join('')}
 </div>
-</div> <!-- Closing div for Quick Stats -->
+</div> 
 
 <script>
 document.addEventListener('click', (e) => {

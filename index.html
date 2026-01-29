@@ -2189,32 +2189,19 @@ renderAdmin() {
                                             </div>
                                         </div>
 
-                                        <div class="p-4 bg-pink-50 rounded-lg">
+                                      <div class="p-4 bg-pink-50 rounded-lg">
                                             <h3 class="text-lg font-bold text-pink-900 mb-3">🧺 Laundry (${stats.volunteersByRole.laundry.size})</h3>
                                             <div class="text-sm text-pink-800">
                                                 ${Array.from(stats.volunteersByRole.laundry).sort().join(', ') || 'None'}
                                             </div>
                                         </div>
-                                    </div>
-                                                                  </div>
-                                        </div>
-
-                                        <div class="p-4 bg-pink-50 rounded-lg">
-                                            <h3 class="text-lg font-bold text-pink-900 mb-3">🧺 Laundry (${stats.volunteersByRole.laundry.size})</h3>
-                                            <div class="text-sm text-pink-800">
-                                                ${Array.from(stats.volunteersByRole.laundry).sort().join(', ') || 'None'}
-                                            </div>
-                                        </div>
-                                    </div>
-                              ` : `
-    <div>
-        <div class="flex justify-between items-center mb-4">
+                                    </div> </div> ` : `
+    <div class="p-6"> <div class="flex justify-between items-center mb-4">
             <h3 class="text-2xl font-bold">Special Events</h3>
             <button onclick="app.editingEvent='new'; app.newEventRoles=[{id:'managers',name:'Managers',time:'',capacity:2},{id:'volunteers',name:'Volunteers',time:'',capacity:10}]; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                 ➕ Create Event
             </button>
         </div>
-
         ${this.editingEvent ? (() => {
             const isNew = this.editingEvent === 'new';
             const event = isNew ? null : this.specialEvents.find(e => e.id === this.editingEvent);
@@ -2434,9 +2421,11 @@ document.addEventListener('click', (e) => {
         header.classList.toggle('collapsed');
         if (content) content.classList.toggle('collapsed');
     }
-});
-</script>
+}); // This is the ONLY closing for the click listener
 
-<script>
+// NOW we close the app and start it
+        } 
+    }; 
+
     app.init();
 </script>

@@ -2003,9 +2003,9 @@ getDatesForPeriod() {
             </button>
         </div>
 
-        ${this.editingEvent === 'new' ? `
+     ${this.editingEvent ? `
             <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                <h4 class="font-bold mb-4 text-lg">Create New Event</h4>
+            <h4 class="font-bold mb-4 text-lg">${this.editingEvent === 'new' ? 'Create New Event' : 'Edit Event'}</h4>
                 <div class="space-y-4">
                     <!-- Event Name -->
                     <div>
@@ -2119,9 +2119,9 @@ getDatesForPeriod() {
                             app.editingEvent = null;
                             app.newEventRoles = null;
                             app.render();
-                        " class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold">
-                            ✓ Create Event
-                        </button>
+                       class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold">
+    ✓ ${this.editingEvent === 'new' ? 'Create Event' : 'Update Event'}
+</button>
                         <button onclick="app.editingEvent=null; app.newEventRoles=null; app.render();" class="flex-1 bg-gray-300 py-3 rounded-lg hover:bg-gray-400 font-semibold">
                             Cancel
                         </button>

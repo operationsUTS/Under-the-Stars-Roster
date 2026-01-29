@@ -2042,7 +2042,7 @@ getDatesForPeriod() {
                             const filledSlots = Object.values(signups).reduce((sum, arr) => sum + arr.length, 0);
                             const coverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
                             
-                            const [y, m, day] = dateStr.split('-').map(Number);
+                          const [y, m, day] = dateStr.split('-').map(Number);
                             const date = new Date(y, m - 1, day);
                             const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
                             
@@ -2061,5 +2061,14 @@ getDatesForPeriod() {
         </div>
     </div>
 `}
-    app.init();
-</script>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+        
+        app.init();
+    </script>
+</body>
+</html>

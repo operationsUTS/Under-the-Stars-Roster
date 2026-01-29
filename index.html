@@ -2042,6 +2042,12 @@ renderMySignups() {
                         </div>
                     </div>
                 </div>
+         </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2061,9 +2067,8 @@ renderMySignups() {
                     </div>
                 </div>
             </div>` : ''}
-    `;
-},
-
+    `; // THIS backtick is the one that actually closes the volunteer view string
+}, // THIS brace closes the render() function
 renderAdmin() {
     const stats = this.generateReport();
     return `

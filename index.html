@@ -212,134 +212,58 @@
                 display: none;
             }
         }
-        /* Mobile: Hide table, show cards */
-@media (max-width: 768px) {
-    .desktop-table-view {
-        display: none !important;
-    }
-    .mobile-card-view {
-        display: block !important;
-    }
-}
+  /* ==============================
+   MOBILE & DESKTOP ROSTER STYLES
+   ============================== */
 
-@media (min-width: 769px) {
+/* MOBILE BEHAVIOR */
+@media (max-width: 768px) {
+
+    /* Show normal roster table */
     .desktop-table-view {
         display: block !important;
     }
-    .mobile-card-view {
-        display: none !important;
-    }
-}
 
-/* Date card styling */
-.date-card {
-    background: white;
-    border: 3px solid #e5e7eb;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    overflow: hidden;
-}
-
-.date-card.date-next-shift {
-    border-color: #2563eb;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-}
-
-.date-card-header {
-    padding: 16px;
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-    color: white;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.date-card-header.collapsed {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-}
-
-.date-card-content {
-    padding: 12px;
-    display: block;
-}
-
-.date-card-content.collapsed {
-    display: none;
-}
-
-.role-card-mobile {
-    background: #f9fafb;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
-}
-
-.role-card-mobile h4 {
-    font-size: 16px;
-    font-weight: bold;
-    color: #1f2937;
-    margin-bottom: 4px;
-}
-
-.role-card-mobile .time {
-    font-size: 14px;
-    color: #6b7280;
-    margin-bottom: 12px;
-}
-
-.volunteer-list-mobile {
-    margin-bottom: 12px;
-}
-
-.volunteer-item-mobile {
-    background: white;
-    border: 1px solid #e5e7eb;
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.signup-btn-mobile {
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-}
-
-.signup-btn-mobile.available {
-    background: #10b981;
-    color: white;
-}
-
-.signup-btn-mobile.full {
-    background: #f59e0b;
-    color: white;
-}
-        /* Mobile cards for SPECIAL EVENTS only */
-@media (max-width: 768px) {
-    .mobile-special-event-view {
-        display: block !important;
-    }
+    /* Special events: hide table */
     .desktop-table-view.special-event-table {
         display: none !important;
     }
+
+    /* Special event cards */
+    .mobile-card-view.special-event-cards {
+        display: block !important;
+    }
+
+    /* Ensure dropdowns are clickable on mobile */
+    select {
+        position: relative;
+        z-index: 10000;
+    }
+
+    /* Optional: any mobile-specific cards you added */
+    .mobile-special-event-view {
+        display: block !important;
+    }
 }
 
+/* DESKTOP BEHAVIOR */
 @media (min-width: 769px) {
+
+    /* Always show tables on desktop */
+    .desktop-table-view {
+        display: block !important;
+    }
+
+    /* Hide mobile card views on desktop */
+    .mobile-card-view,
     .mobile-special-event-view {
         display: none !important;
     }
 }
+
+/* ==============================
+   CARD / DATE STYLING
+   ============================== */
 
 .date-card {
     background: white;
@@ -418,6 +342,8 @@
     background: #f59e0b;
     color: white;
 }
+
+
     </style>
 </head>
 <body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
@@ -2537,7 +2463,27 @@ getDatesForPeriod() {
             }
         };
         
-        app.init();
-    </script>
+          app.init();
+  <script>
+document.addEventListener('click', (e) => {
+    // Month headers
+    if (e.target.closest('.month-header')) {
+        const header = e.target.closest('.month-header');
+        const content = header.nextElementSibling;
+        header.classList.toggle('collapsed');
+        if (content) content.classList.toggle('collapsed');
+    }
+
+    // Date card headers
+    if (e.target.closest('.date-card-header')) {
+        const header = e.target.closest('.date-card-header');
+        const content = header.nextElementSibling;
+        header.classList.toggle('collapsed');
+        if (content) content.classList.toggle('collapsed');
+    }
+});
+</script>
+
 </body>
+
 </html>

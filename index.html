@@ -856,6 +856,24 @@ async toggleEventVisibility(eventId) {
         this.showNotification('Error updating visibility', 'error');
     }
 },
+            addEventDate() {
+    const container = document.getElementById('eventDates');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2';
+    
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.className = 'event-date-input flex-1 p-2 border rounded-lg';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.className = 'px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200';
+    removeBtn.onclick = function() { div.remove(); };
+    
+    div.appendChild(dateInput);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+},
             async saveNote(view, dateStr, note) {
                 const key = `${view}-${dateStr}`;
                 

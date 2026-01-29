@@ -2095,14 +2095,14 @@ getDatesForPeriod() {
                             }
                             
                             // Prepare roles
-                            const roles = (app.newEventRoles || [])
-                                .filter(r => r.name.trim())
-                                .map(r => ({
-                                    id: r.id || r.name.toLowerCase().replace(/\\s+/g, '-'),
-                                    name: r.name.trim(),
-                                    time: r.time.trim() || 'TBD',
-                                    capacity: parseInt(r.capacity) || 1
-                                }));
+                       const roles = (app.newEventRoles || [])
+    .filter(r => r.name.trim())
+    .map(r => ({
+        id: r.id || r.name.toLowerCase().split(' ').join('-'),
+        name: r.name.trim(),
+        time: r.time.trim() || 'TBD',
+        capacity: parseInt(r.capacity) || 1
+    }));
                             
                             if(roles.length === 0) {
                                 alert('Please add at least one role');

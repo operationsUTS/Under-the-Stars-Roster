@@ -2159,17 +2159,22 @@ getDatesForPeriod() {
                                 `).join('')}
                             </div>
                         </div>
-                        <div class="flex gap-2 ml-4">
-                            <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
-                                    class="p-2 ${event.visible ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'} rounded hover:opacity-80" 
-                                    title="${event.visible ? 'Visible to volunteers' : 'Hidden from volunteers'}">
-                                ${event.visible ? '👁️ Visible' : '👁️‍🗨️ Hidden'}
-                            </button>
-                            <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
-                                    class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
-                                🗑️
-                            </button>
-                        </div>
+                    <div class="flex gap-2 ml-4">
+    <button onclick="app.editSpecialEvent('${event.id}');" 
+            class="p-2 text-blue-600 bg-blue-50 rounded hover:bg-blue-100"
+            title="Edit event">
+        ✏️ Edit
+    </button>
+    <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
+            class="p-2 ${event.visible ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'} rounded hover:opacity-80" 
+            title="${event.visible ? 'Visible to volunteers' : 'Hidden from volunteers'}">
+        ${event.visible ? '👁️ Visible' : '👁️‍🗨️ Hidden'}
+    </button>
+    <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
+            class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
+        🗑️
+    </button>
+</div>
                     </div>
                     
                     <!-- Quick Stats -->

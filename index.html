@@ -570,8 +570,8 @@ getVisibleRoles(view) {
                         volunteer_name: newName.trim()
                     });
                     
-                    await this.loadSignups();
-                    this.showNotification('Name updated successfully!');
+           await this.loadSignups();
+await this.loadSpecialEvents();
                     
                 } catch (e) {
                     console.error('Error updating:', e);

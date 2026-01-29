@@ -1036,6 +1036,26 @@ async toggleEventVisibility(eventId) {
                 return (h + 6) % 7;
             },
 getDatesForPeriod() {
+    // Check if viewing a special event
+    const specialEvent = (this.specialEvents || []).find(e => e.id === this.currentView);
+    if (specialEvent) {
+        // Return ONLY the dates specified for this event
+        return specialEvent.dates.map(dateStr => {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(year, month - 1, day);
+            return {
+                date: dateStr,
+                label: date.toLocaleDateString('en-NZ', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long',
+                    year: 'numeric'
+                })
+            };
+        }).sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+    
+    // Regular roster logic (thursday/saturday/weekly)
     const period = (this.periods || []).find(p => p.id === this.selectedPeriod);
     if (!period) return [];
     
@@ -1044,7 +1064,6 @@ getDatesForPeriod() {
     if (this.currentView === 'weekly-tasks') {
         const targetDay = 3;
         period.months.forEach((month, index) => {
-            // Get the correct year for this month from the years array we stored
             const year = period.years ? period.years[index] : period.year;
             
             for (let day = 1; day <= 31; day++) {
@@ -1067,7 +1086,6 @@ getDatesForPeriod() {
     } else {
         const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
         period.months.forEach((month, index) => {
-            // Get the correct year for this month from the years array
             const year = period.years ? period.years[index] : period.year;
             
             for (let day = 1; day <= 31; day++) {
@@ -1087,8 +1105,7 @@ getDatesForPeriod() {
         });
     }
     return dates;
-}, 
-
+},
             generateReport() {
                 const stats = {
                     totalSignups: 0,

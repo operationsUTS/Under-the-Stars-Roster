@@ -218,7 +218,7 @@
     <div id="app"></div>
 
     <script>
-        const APP_VERSION = '20241219-COMPLETE';
+        const APP_VERSION = '20250129-v2'; 
         console.log('🚀 App version:', APP_VERSION);
         
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmatqxXzelAU7jX8PBlEyy_WEXzKjHshSU7ElXrwkmg5gcS-nscteadjCZcgtx-o05Tg/exec';
@@ -615,28 +615,39 @@ getVisibleRoles(view) {
                 setTimeout(() => notif.remove(), duration);
             },
 
-         async init() {
+        async init() {
+    // Force reload if old version
+    const storedVersion = localStorage.getItem('uts-app-version');
+    if (storedVersion && storedVersion !== APP_VERSION) {
+        console.log('New version detected, clearing cache...');
+        localStorage.clear();
+        window.location.reload(true);
+        return;
+    }
+    localStorage.setItem('uts-app-version', APP_VERSION);
+    
     this.generatePeriods();
-                this.isLoading = true;
-                this.render();
-                
-                await this.loadSignups();
-                this.loadSpecialEvents();
-                
-                this.isLoading = false;
-                this.isInitialized = true;
-                this.render();
-                
-                setInterval(() => this.createBackup(), 300000);
-                this.createBackup();
-              window.addEventListener('beforeunload', (e) => {
+    this.isLoading = true;
+    this.render();
+    
+    await this.loadSignups();
+    this.loadSpecialEvents();
+    
+    this.isLoading = false;
+    this.isInitialized = true;
+    this.render();
+    
+    setInterval(() => this.createBackup(), 300000);
+    this.createBackup();
+    
+    window.addEventListener('beforeunload', (e) => {
         if (this.syncQueue > 0) {
             e.preventDefault();
             e.returnValue = 'Changes are still syncing. Are you sure you want to leave?';
             return e.returnValue;
         }
     });
-            },
+},
 
             async loadSignups() {
                 try {

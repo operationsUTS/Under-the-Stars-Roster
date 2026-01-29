@@ -283,8 +283,10 @@
     editingEvent: null,       
     showMySignups: false,     
     mySignupsList: [],        
-    searchName: '',           
-    backupCount: 5,           
+   searchName: '',
+backupCount: 5,
+isSyncing: false,
+syncQueue: 0,
             
             // Generate periods dynamically starting from current month
             generatePeriods() {
@@ -627,6 +629,13 @@ getVisibleRoles(view) {
                 
                 setInterval(() => this.createBackup(), 300000);
                 this.createBackup();
+              window.addEventListener('beforeunload', (e) => {
+        if (this.syncQueue > 0) {
+            e.preventDefault();
+            e.returnValue = 'Changes are still syncing. Are you sure you want to leave?';
+            return e.returnValue;
+        }
+    });
             },
 
             async loadSignups() {
@@ -858,7 +867,7 @@ async toggleEventVisibility(eventId) {
                 return this.dateNotes[key] || '';
             },
 
-           async addSignup() {
+   async addSignup() {
     if (!this.volunteerName.trim()) return alert('Please enter your name');
     const { view, dateStr, roleId } = this.selectedSlot;
     
@@ -870,64 +879,101 @@ async toggleEventVisibility(eventId) {
         if (!override) return;
     }
     
-    // Show saving message IMMEDIATELY
-    this.showNotification('⏳ Saving... please wait', 'warning');
+    // Close modal and show optimistically
     this.showModal = false;
-    this.isLoading = true;
+    this.volunteerName = '';
+    
+    // Add to local data immediately
+    if (!this.signups[view]) this.signups[view] = {};
+    if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
+    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+    
+    const tempSignup = {
+        id: 'temp-' + Date.now(),
+        name: this.volunteerName || document.querySelector('input[placeholder="Enter your full name"]')?.value || 'Unknown'
+    };
+    
+    this.signups[view][dateStr][roleId].push(tempSignup);
     this.render();
     
+    // Show sync indicator
+    this.syncQueue++;
+    this.isSyncing = true;
+    this.showNotification('💾 Syncing...', 'warning');
+    
+    // Sync in background
     try {
-        await googleAPI.call('addSignup', {
+        const result = await googleAPI.call('addSignup', {
             roster_type: view,
             shift_date: dateStr,
             role_id: roleId,
-            volunteer_name: this.volunteerName.trim()
+            volunteer_name: tempSignup.name
         });
         
-        this.showNotification('⏳ Reloading roster... almost done!', 'warning');
-        await this.loadSignups();
+        // Replace temp ID with real ID
+        const signup = this.signups[view][dateStr][roleId].find(s => s.id === tempSignup.id);
+        if (signup && result.id) {
+            signup.id = result.id;
+        }
         
-        this.volunteerName = '';
-        this.isLoading = false;
-        this.render();
+        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+        this.syncQueue--;
+        this.isSyncing = this.syncQueue > 0;
         
-        this.showNotification('✅ Signed up successfully!');
+        this.showNotification('✅ Saved!', 'success');
         
     } catch (e) {
-        console.error('Error signing up:', e);
-        this.isLoading = false;
-        this.volunteerName = '';
-        this.showNotification('❌ Error signing up. Please try again.', 'error');
+        console.error('Error syncing signup:', e);
+        
+        // Remove the failed signup
+        this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s.id !== tempSignup.id);
+        
+        this.syncQueue--;
+        this.isSyncing = this.syncQueue > 0;
         this.render();
+        
+        this.showNotification('❌ Failed to save. Please try again.', 'error');
     }
 },
-        
-       async removeSignup(view, dateStr, roleId, signup) {
+     async removeSignup(view, dateStr, roleId, signup) {
     if (!confirm(`Remove ${signup.name}?`)) return;
     
-    this.showNotification('⏳ Removing... please wait', 'warning');
-    this.isLoading = true;
+    // Remove from local data immediately
+    const index = this.signups[view][dateStr][roleId].findIndex(s => s.id === signup.id);
+    if (index > -1) {
+        this.signups[view][dateStr][roleId].splice(index, 1);
+    }
     this.render();
     
+    // Show sync indicator
+    this.syncQueue++;
+    this.isSyncing = true;
+    this.showNotification('💾 Syncing...', 'warning');
+    
+    // Sync in background
     try {
         await googleAPI.call('removeSignup', { id: signup.id });
         
-        this.showNotification('⏳ Reloading roster...', 'warning');
-        await this.loadSignups();
+        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+        this.syncQueue--;
+        this.isSyncing = this.syncQueue > 0;
         
-        this.isLoading = false;
-        this.render();
-        
-        this.showNotification('✅ Removed successfully!');
+        this.showNotification('✅ Removed!', 'success');
         
     } catch (e) {
-        console.error('Error removing:', e);
-        this.isLoading = false;
-        this.showNotification('❌ Error removing. Please try again.', 'error');
+        console.error('Error syncing removal:', e);
+        
+        // Re-add the signup since removal failed
+        if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+        this.signups[view][dateStr][roleId].push(signup);
+        
+        this.syncQueue--;
+        this.isSyncing = this.syncQueue > 0;
         this.render();
+        
+        this.showNotification('❌ Failed to remove. Please try again.', 'error');
     }
 },
-
             getSignups(view, dateStr, roleId) {
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
             },
@@ -1445,20 +1491,19 @@ getDatesForPeriod() {
                                     `).join('')}
                                 </div>
 
-                                ${this.connectionStatus === 'connected' ? `
-                                    <div class="mt-6 p-3 bg-green-100 text-green-800 rounded-lg text-sm text-center">
-                                        ✓ Connected to Google Sheets
-                                    </div>
-                                ` : this.connectionStatus === 'error' ? `
-                                    <div class="mt-6 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm text-center">
-                                        ⚠️ Working offline - Changes may not save
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
+                  ${this.syncQueue > 0 ? `
+    <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print animate-pulse">
+        💾 Syncing ${this.syncQueue} change${this.syncQueue !== 1 ? 's' : ''}... Don't close this page!
+    </div>
+` : this.connectionStatus === 'connected' ? `
+    <div class="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-sm no-print">
+        ✓ Connected - Changes sync across all devices
+    </div>
+` : this.connectionStatus === 'error' ? `
+    <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print">
+        ⚠️ Working offline - Using local storage
+    </div>
+` : ''}
 
           renderRoster() {
     // Safety checks

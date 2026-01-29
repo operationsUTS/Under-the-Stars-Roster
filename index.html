@@ -869,6 +869,14 @@ async toggleEventVisibility(eventId) {
         this.showNotification('Error updating visibility', 'error');
     }
 },
+            async editSpecialEvent(eventId) {
+    const event = this.specialEvents.find(e => e.id === eventId);
+    if (!event) return;
+    
+    this.editingEvent = eventId;
+    this.newEventRoles = JSON.parse(JSON.stringify(event.roles));
+    this.render();
+},
             addEventDate() {
     const container = document.getElementById('eventDates');
     const div = document.createElement('div');

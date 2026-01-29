@@ -1986,115 +1986,109 @@ renderMySignups() {
                                             </div>
 
                                             </div> 
-                                            ${isSpecialEvent ? 
-    '<div class="mobile-special-event-view">' +
-    monthData.dates.map((d) => {
-        const dateClass = this.getDateClass(d.date);
-        const isNextShift = d.date === nextShiftDate;
-        
-        let html = '<div class="date-card ' + dateClass + '">';
-        html += '<div class="date-card-header" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'collapsed\');">';
-        html += '<div>';
-        if (isNextShift) html += '<div class="next-shift-badge" style="display:inline-block;margin-right:8px;">NEXT</div>';
-        html += '<span>' + d.label + '</span></div>';
-        html += '<span style="font-size:24px;">▼</span></div>';
-        html += '<div class="date-card-content collapsed">';
-        
-        roles.forEach(role => {
-            const signups = this.getSignups(this.currentView, d.date, role.id);
-            const slotsLeft = role.capacity - signups.length;
-            
-            html += '<div class="role-card-mobile">';
-            html += '<h4>' + role.name + '</h4>';
-            html += '<div class="time">' + role.time + ' • ' + slotsLeft + ' of ' + role.capacity + ' spots left</div>';
-            
-            if (signups.length > 0) {
-                html += '<div style="margin-bottom:12px;">';
-                signups.forEach((signup, idx) => {
-html += '<div class="volunteer-item-mobile">';
-html += '<span>✓ ' + signup.name + '</span>';
-html += '<button onclick="app.removeSignup(\'' + this.currentView + '\',\'' + d.date + '\',\'' + role.id + '\',app.getSignups(\'' + this.currentView + '\',\'' + d.date + '\',\'' + role.id + '\')[' + idx + ']);" style="background:none;border:none;color:#ef4444;font-size:18px;cursor:pointer;">✕</button>';
-html += '</div>';
-});
-html += '</div>'; // Closing the signups div
+        </div> 
+                                            ${isSpecialEvent ? `
+                                                <div class="mobile-special-event-view">
+                                                    ${monthData.dates.map((d) => {
+                                                        const dateClass = this.getDateClass(d.date);
+                                                        const isNextShift = d.date === nextShiftDate;
+                                                        const rolesForView = this.getVisibleRoles(this.currentView);
+                                                        
+                                                        let dateHtml = `<div class="date-card ${dateClass}">
+                                                            <div class="date-card-header" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed');">
+                                                                <div>
+                                                                    ${isNextShift ? '<div class="next-shift-badge" style="display:inline-block;margin-right:8px;">NEXT</div>' : ''}
+                                                                    <span>${d.label}</span>
+                                                                </div>
+                                                                <span style="font-size:24px;">▼</span>
+                                                            </div>
+                                                            <div class="date-card-content collapsed">`;
+                                                        
+                                                        rolesForView.forEach(role => {
+                                                            const signups = this.getSignups(this.currentView, d.date, role.id);
+                                                            const slotsLeft = role.capacity - signups.length;
+                                                            
+                                                            dateHtml += `<div class="role-card-mobile">
+                                                                <h4>${role.name}</h4>
+                                                                <div class="time">${role.time} • ${slotsLeft} of ${role.capacity} spots left</div>`;
+                                                            
+                                                            if (signups.length > 0) {
+                                                                dateHtml += `<div style="margin-bottom:12px;">`;
+                                                                signups.forEach((signup, idx) => {
+                                                                    dateHtml += `<div class="volunteer-item-mobile">
+                                                                        <span>✓ ${signup.name}</span>
+                                                                        <button onclick="app.removeSignup('${this.currentView}','${d.date}','${role.id}',app.getSignups('${this.currentView}','${d.date}','${role.id}')[${idx}]);" style="background:none;border:none;color:#ef4444;font-size:18px;cursor:pointer;">✕</button>
+                                                                    </div>`;
+                                                                });
+                                                                dateHtml += `</div>`;
+                                                            }
 
-// Signup button section
-html += '<button onclick="app.selectedSlot={view:\'' + this.currentView + '\',dateStr:\'' + d.date + '\',roleId:\'' + role.id + '\'};app.showModal=true;app.render();" ';
-html += 'class="signup-btn-mobile ' + (slotsLeft > 0 ? 'available' : 'full') + '">';
-html += slotsLeft > 0 ? '✋ Sign Me Up! (' + slotsLeft + ' left)' : '⚠️ FULL - Add Anyway?';
-html += '</button>'; // Close the signup button div
-html += '</div>'; // Close the role div
-}); // Closing the loop
-html += `
-
-`;
-
-// Handle Modal within the mobile view string
-        if (this.showModal) {
-            n-900 mb-3">🤝 Top Hall Help</h4>
-                                                <div class="space-y-1">
-                                                    ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
-                                                        <div class="flex justify-between text-sm">
-                                                            <span>${i+1}. ${name}</span>
-                                                            <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                                        </div>
-                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                            dateHtml += `<button onclick="app.selectedSlot={view:'${this.currentView}',dateStr:'${d.date}',roleId:'${role.id}'};app.showModal=true;app.render();" 
+                                                                class="signup-btn-mobile ${slotsLeft > 0 ? 'available' : 'full'}">
+                                                                ${slotsLeft > 0 ? '✋ Sign Me Up! (' + slotsLeft + ' left)' : '⚠️ FULL - Add Anyway?'}
+                                                            </button>
+                                                            </div>`;
+                                                        });
+                                                        
+                                                        dateHtml += `</div></div>`;
+                                                        return dateHtml;
+                                                    }).join('')}
                                                 </div>
-                                            </div>
-
-                                            <div class="p-4 bg-purple-50 rounded-lg">
-                                                <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks Trolley</h4>
-                                                <div class="space-y-1">
-                                                    ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
-                                                        <div class="flex jhtml += `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this){app.showModal=false; app.render();}">
-                    <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-                        <h3 class="text-2xl font-bold mb-2">Sign Up for This Shift</h3>
-                        <div class="bg-blue-50 p-3 rounded mb-4 text-sm">
-                            <p><strong>Role:</strong> ${(() => {
-                                const slot = this.selectedSlot;
-                                if (!slot) return '';
-                                const role = this.getVisibleRoles(slot.view).find(r => r.id === slot.roleId);
-                                return role ? `${role.name} (${role.time})` : '';
-                            })()}</p>
-                        </div>
-                        <input type="text" 
-                               placeholder="Enter your full name" 
-                               value="${this.volunteerName}"
-                               oninput="app.volunteerName=this.value"
-                               onkeypress="if(event.key==='Enter'){app.addSignup();}"
-                               class="w-full p-3 border-2 border-gray-300 rounded-lg mb-4 text-lg focus:border-blue-500 focus:outline-none"
-                               autofocus />
-                        <div class="flex gap-2">
-                            <button onclick="app.addSignup()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700">Confirm</button>
-                            <button onclick="app.showModal=false; app.render();" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg">Cancel</button>
+                                            ` : ''}
+                                        </div> 
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
-                </div>`;
-        }
+                </div>
+            </div>
+        </div>
 
-        return html;
-    },
-            renderAdmin() {
-                const stats = this.generateReport();
-                
-                return `
-                    <div class="min-h-screen p-4">
-                        <div class="max-w-6xl mx-auto">
-                            <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
-                                <div class="flex justify-between items-center mb-6">
-                                    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
-                                    <div class="flex gap-2">
-                                        <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">👁️ View as Volunteer</button>
-                                        <button onclick="app.logoutAdmin()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
-                                    </div>
-                                </div>
+        ${this.showModal ? `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+                    <h3 class="text-2xl font-bold mb-2">Sign Up</h3>
+                    <input type="text" 
+                           placeholder="Enter your full name" 
+                           value="${this.volunteerName || ''}"
+                           oninput="app.volunteerName=this.value"
+                           class="w-full p-3 border-2 border-gray-300 rounded-lg mb-4 text-lg focus:border-blue-500 outline-none"
+                           autofocus />
+                    <div class="flex gap-2">
+                        <button onclick="app.addSignup()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold">Confirm</button>
+                        <button onclick="app.showModal=false; app.render();" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg">Cancel</button>
+                    </div>
+                </div>
+            </div>` : ''}
+    `;
+},
 
-                                <div class="flex gap-2 mb-6 flex-wrap">
-                                    <button onclick="app.adminView='dashboard'; app.render();" class="px-4 py-2 ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Dashboard</button>
-                                    <button onclick="app.adminView='volunteers'; app.render();" class="px-4 py-2 ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Volunteers by Role</button>
-                                    <button onclick="app.adminView='special-events'; app.render();" class="px-4 py-2 ${this.adminView === 'special-events' ? 'bg-indigo-600 text-white' : 'bg-gray-200'} rounded-lg">Special Events</button>
-                                </div>
+renderAdmin() {
+    const stats = this.generateReport();
+    return `
+        <div class="min-h-screen bg-gray-100 p-4">
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-white rounded-lg shadow-xl p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+                        <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Volunteer View</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <div class="text-3xl font-bold text-blue-600">${stats.totalSignups}</div>
+                            <div class="text-gray-600">Total Signups</div>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-lg">
+                            <div class="text-3xl font-bold text-green-600">${stats.volunteerList.size}</div>
+                            <div class="text-gray-600">Unique Volunteers</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
                                 ${this.adminView === 'dashboard' ? `
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

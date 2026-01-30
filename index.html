@@ -2405,25 +2405,6 @@ renderAdmin() {
     }).join('')}
 </div>
 </div> 
-
-<script>
-document.addEventListener('click', (e) => {
-    // Month headers
-    if (e.target.closest('.month-header')) {
-        const header = e.target.closest('.month-header');
-        const content = header.nextElementSibling;
-        header.classList.toggle('collapsed');
-        if (content) content.classList.toggle('collapsed');
-    }
-
-    // Date card headers
-    if (e.target.closest('.date-card-header')) {
-        const header = e.target.closest('.date-card-header');
-        const content = header.nextElementSibling;
-        header.classList.toggle('collapsed');
-        if (content) content.classList.toggle('collapsed');
-    }
-}); // This is the ONLY closing for the click listener
 `).join('')}
             </div>
         </div> 

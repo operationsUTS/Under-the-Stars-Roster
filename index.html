@@ -1560,16 +1560,9 @@ getDatesForPeriod() {
             appEl.innerHTML = this.renderWelcome();
         } else if (this.currentView === 'admin') {
             appEl.innerHTML = this.renderAdmin();
-        } else {
-            // Your NEW Logic: Different views for Special Events
-           const isSpecialEvent = (this.specialEvents || []).some(e => e.id === this.currentView);
-            
-            if (isSpecialEvent && window.innerWidth <= 768) {
-                appEl.innerHTML = this.renderMobileView(); 
-            } else {
-                appEl.innerHTML = this.renderRoster();
-            }
-        }
+       } else {
+    appEl.innerHTML = this.renderRoster();
+}
     } catch (error) {
         console.error("Render Error:", error);
         document.getElementById('app').innerHTML = `<div class="p-6 text-red-500">⚠️ Display Error. Please refresh.</div>`;

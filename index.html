@@ -2078,8 +2078,7 @@ renderAdmin() {
                             <div class="p-4 bg-blue-50 rounded-lg">
                                 <div class="text-3xl font-bold text-blue-600">${stats.totalSignups}</div>
                                 <div class="text-gray-600">Total Signups</div>
-                            </div>
-                            <div class="p-4 bg-green-50 rounded-lg">
+                            </div><div class="p-4 bg-green-50 rounded-lg">
                                 <div class="text-3xl font-bold text-green-600">${stats.volunteerList.size}</div>
                                 <div class="text-gray-600">Unique Volunteers</div>
                             </div>
@@ -2097,68 +2096,59 @@ renderAdmin() {
                                                 <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
                                             </div>
                                         `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                    </div><div class="p-4 bg-green-50 rounded-lg">
+                                    <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
+                                    <div class="space-y-1">
+                                        ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
+                                            <div class="flex justify-between text-sm">
+                                                <span>${i+1}. ${name}</span>
+                                                <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                            </div>
+                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
                                     </div>
                                 </div>
+
+                                <div class="p-4 bg-purple-50 rounded-lg">
+                                    <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks</h4>
+                                    <div class="space-y-1">
+                                        ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
+                                            <div class="flex justify-between text-sm">
+                                                <span>${i+1}. ${name}</span>
+                                                <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                            </div>
+                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                    </div>
                                 </div>
+
+                                <div class="p-4 bg-yellow-50 rounded-lg">
+                                    <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
+                                    <div class="space-y-1">
+                                        ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
+                                            <div class="flex justify-between text-sm">
+                                                <span>${i+1}. ${name}</span>
+                                                <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                            </div>
+                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    ` : ''}
-                </div>
-            </div>
 
-                                    <div class="mb-6">
-                                        <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
-                                        
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div class="p-4 bg-blue-50 rounded-lg">
-                                                <h4 class="font-bold text-blue-900 mb-3">👔 Top Meal Managers</h4>
-                                                <div class="space-y-1">
-                                                    ${stats.topByRole.managers.length > 0 ? stats.topByRole.managers.map(([name, count], i) => `
-                                                        <div class="flex justify-between text-sm">
-                                                            <span>${i+1}. ${name}</span>
-                                                            <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                                        </div>
-                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                                </div>
-                                            </div>
-
-                                            <div class="p-4 bg-green-50 rounded-lg">
-                                                <h4 class="font-bold text-greeustify-between text-sm">
-                                                            <span>${i+1}. ${name}</span>
-                                                            <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                                        </div>
-                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                                </div>
-                                            </div>
-
-                                            <div class="p-4 bg-yellow-50 rounded-lg">
-                                                <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
-                                                <div class="space-y-1">
-                                                    ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
-                                                        <div class="flex justify-between text-sm">
-                                                            <span>${i+1}. ${name}</span>
-                                                            <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                                        </div>
-                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="space-y-4">
-                                        <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
-                                            📊 Export to CSV
-                                        </button>
-                                        <button onclick="app.downloadBackup()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
-                                            💾 Download Backup
-                                        </button>
-                                        <button onclick="app.uploadBackup()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
-                                            📂 Upload Backup
-                                        </button>
-                                        <button onclick="app.addNextQuarter()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
-                                            ➕ Add Next Quarter
-                                        </button>
-                                    </div>
-                                ` : this.adminView === 'volunteers' ? `
+                        <div class="space-y-4">
+                            <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
+                                📊 Export to CSV
+                            </button>
+                            <button onclick="app.downloadBackup()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                                💾 Download Backup
+                            </button>
+                            <button onclick="app.uploadBackup()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
+                                📂 Upload Backup
+                            </button>
+                            <button onclick="app.addNextQuarter()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                                ➕ Add Next Quarter
+                            </button>
+                        </div>
+                    ` : this.adminView === 'volunteers' ? `
                                     <div class="space-y-6">
                                         <div class="p-4 bg-blue-50 rounded-lg">
                                             <h3 class="text-lg font-bold text-blue-900 mb-3">👔 Managers (${stats.volunteersByRole.managers.size})</h3>

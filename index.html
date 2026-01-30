@@ -2095,8 +2095,11 @@ renderAdmin() {
                                                 <span>${i+1}. ${name}</span>
                                                 <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
                                             </div>
-                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                    </div><div class="p-4 bg-green-50 rounded-lg">
+                                      `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 bg-green-50 rounded-lg">
                                     <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
                                     <div class="space-y-1">
                                         ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `

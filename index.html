@@ -350,7 +350,7 @@
     <div id="app"></div>
 
     <script>
-   const APP_VERSION = '20250130-v5';
+   const APP_VERSION = '20250130-v7';
 console.log('🚀 App version:', APP_VERSION);
 
 // FORCE VERSION CHECK IMMEDIATELY - before anything else loads
@@ -505,8 +505,8 @@ periods.push({
                     { id: 'giveaway', name: 'Giveaway Table', time: '3:45pm-5:45pm', capacity: 2 },
                 ],
                 'weekly-tasks': [
-                    { id: 'wed-pickup', name: 'Wed Bakers Delight', time: '~3:45pm', capacity: 1 },
-                    { id: 'thurs-pickup', name: 'Thurs Bakers Delight', time: '4:50pm', capacity: 1 },
+                    { id: 'wed-pickup', name: 'Wed Bakers Delight', time: '4:55pm', capacity: 1 },
+                    { id: 'thurs-pickup', name: 'Thurs Bakers Delight', time: '4:55pm', capacity: 1 },
                     { id: 'cheesecake', name: 'Cheesecake Shop', time: '3-6pm Fri', capacity: 1 },
                 ]
             },
@@ -2062,9 +2062,23 @@ renderAdmin() {
         <div class="min-h-screen bg-gray-100 p-4">
             <div class="max-w-6xl mx-auto">
                 <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex justify-between items-center mb-4">
                         <h1 class="text-3xl font-bold">Admin Dashboard</h1>
                         <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Volunteer View</button>
+                    </div>
+                    <div class="flex gap-2 mb-6 border-b pb-4">
+                        <button onclick="app.adminView='dashboard'; app.render();" 
+                                class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                            📊 Dashboard
+                        </button>
+                        <button onclick="app.adminView='volunteers'; app.render();" 
+                                class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                            👥 Volunteers
+                        </button>
+                        <button onclick="app.adminView='events'; app.render();" 
+                                class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'events' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                            🗓️ Special Events
+                        </button>
                     </div>
 
                     ${this.adminView === 'dashboard' ? `

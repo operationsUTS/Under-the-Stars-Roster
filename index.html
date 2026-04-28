@@ -355,7 +355,7 @@
     <div id="app"></div>
 
     <script>
-   const APP_VERSION = '20250130-v9';
+   const APP_VERSION = '20250130-v10';
 console.log('🚀 App version:', APP_VERSION);
 
 // FORCE VERSION CHECK IMMEDIATELY - before anything else loads
@@ -509,7 +509,7 @@ console.log('🚀 App version:', APP_VERSION);
                     { id: 'dishes', name: 'Dishes', time: '11:30am-1:30pm', capacity: 1 },
                     { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
                     { id: 'giveaway', name: 'Giveaway Table', time: '10:45am-12:45pm', capacity: 2 },
-                    { id: 'supported-vol', name: 'Supported Vols', time: '', capacity: 3, adminOnly: true },
+                    { id: 'supported-vol', name: 'Supported Vols', time: '', capacity: 1, adminOnly: true },
                 ],
                 'saturday-hall': [
                     { id: 'managers', name: 'Managers', time: '2:45pm-6:30pm', capacity: 2 },
@@ -519,7 +519,7 @@ console.log('🚀 App version:', APP_VERSION);
                     { id: 'dishes', name: 'Dishes', time: '4:30pm-6:30pm', capacity: 1 },
                     { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
                     { id: 'giveaway', name: 'Giveaway Table', time: '3:45pm-5:45pm', capacity: 2 },
-                    { id: 'supported-vol', name: 'Supported Vols', time: '', capacity: 3, adminOnly: true },
+                    { id: 'supported-vol', name: 'Supported Vols', time: '', capacity: 1, adminOnly: true },
                 ],
                 'weekly-tasks': [
                     { id: 'wed-pickup', name: 'Wed Bakers Delight', time: '4:55pm', capacity: 1 },
@@ -1856,7 +1856,7 @@ console.log('🚀 App version:', APP_VERSION);
                                                                                                     <div class="flex-1">
                                                                                                         <div class="font-semibold">${sv.name}</div>
                                                                                                         <div class="flex gap-1 mt-0.5 flex-wrap">
-                                                                                                            <span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold ${sv.sw === 'Y' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">SW: ${sv.sw}</span>
+                                                                                                            <span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold ${sv.sw === 'Y' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">Support Worker: ${sv.sw === 'Y' ? 'Yes' : 'No'}</span>
                                                                                                             ${sv.time ? `<span class="inline-block px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-700">${sv.time}</span>` : ''}
                                                                                                         </div>
                                                                                                     </div>
@@ -1978,7 +1978,7 @@ console.log('🚀 App version:', APP_VERSION);
                                                                                                             <div>
                                                                                                                 <div style="font-weight:600;">${sv.name}</div>
                                                                                                                 <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap;">
-                                                                                                                    <span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:${sv.sw==='Y'?'#dcfce7':'#f3f4f6'};color:${sv.sw==='Y'?'#16a34a':'#6b7280'}">SW: ${sv.sw}</span>
+                                                                                                                    <span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:${sv.sw==='Y'?'#dcfce7':'#f3f4f6'};color:${sv.sw==='Y'?'#16a34a':'#6b7280'}">Support Worker: ${sv.sw==='Y'?'Yes':'No'}</span>
                                                                                                                     ${sv.time ? `<span style="font-size:11px;padding:1px 6px;border-radius:4px;background:#ffedd5;color:#c2410c;">${sv.time}</span>` : ''}
                                                                                                                 </div>
                                                                                                             </div>
@@ -2048,19 +2048,15 @@ console.log('🚀 App version:', APP_VERSION);
                                                    class="w-full p-3 border-2 border-gray-300 rounded-lg text-lg focus:border-orange-400 outline-none"
                                                    autofocus />
                                         </div>
-                                        <div>
-                                            <label class="block text-sm font-semibold text-gray-700 mb-1">Support Worker attending?</label>
-                                            <div class="flex gap-2">
-                                                <button onclick="app.supVolForm.sw='Y'; app.render();" 
-                                                        class="flex-1 py-2 rounded-lg font-bold border-2 ${this.supVolForm.sw === 'Y' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'}">
-                                                    Yes
-                                                </button>
-                                                <button onclick="app.supVolForm.sw='N'; app.render();" 
-                                                        class="flex-1 py-2 rounded-lg font-bold border-2 ${this.supVolForm.sw === 'N' ? 'bg-gray-600 text-white border-gray-600' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}">
-                                                    No
-                                                </button>
-                                            </div>
-                                        </div>
+                                                        <div>
+                                                            <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-orange-300">
+                                                                <input type="checkbox"
+                                                                       ${this.supVolForm.sw === 'Y' ? 'checked' : ''}
+                                                                       onchange="app.supVolForm.sw=this.checked?'Y':'N';"
+                                                                       class="w-5 h-5 accent-orange-500" />
+                                                                <span class="font-semibold text-gray-700">Support Worker attending</span>
+                                                            </label>
+                                                        </div>
                                         <div>
                                             <label class="block text-sm font-semibold text-gray-700 mb-1">Time (optional)</label>
                                             <input type="text" 

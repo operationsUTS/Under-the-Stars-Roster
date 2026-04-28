@@ -212,6 +212,7 @@
                 display: none;
             }
         }
+
   /* ==============================
    MOBILE & DESKTOP ROSTER STYLES
    ============================== */
@@ -343,6 +344,10 @@
     color: white;
 }
 
+/* Supported vol column header styling */
+.supported-vol-header {
+    background: linear-gradient(135deg, #ea580c 0%, #f97316 100%) !important;
+}
 
     </style>
 </head>
@@ -350,7 +355,7 @@
     <div id="app"></div>
 
     <script>
-   const APP_VERSION = '20250130-v7';
+   const APP_VERSION = '20250130-v8';
 console.log('🚀 App version:', APP_VERSION);
 
 // FORCE VERSION CHECK IMMEDIATELY - before anything else loads
@@ -359,7 +364,6 @@ console.log('🚀 App version:', APP_VERSION);
     if (storedVersion && storedVersion !== APP_VERSION) {
         console.log('🔄 New version detected, clearing cache and reloading...');
         localStorage.clear();
-        // Use location.reload(true) to force bypass cache
         window.location.href = window.location.href + '?nocache=' + Date.now();
         return;
     }
@@ -428,30 +432,26 @@ console.log('🚀 App version:', APP_VERSION);
     editingEvent: null,       
     showMySignups: false,     
     mySignupsList: [],        
-   searchName: '',
-backupCount: 5,
-isSyncing: false,
-syncQueue: 0,
+    searchName: '',
+    backupCount: 5,
+    isSyncing: false,
+    syncQueue: 0,
             
-            // Generate periods dynamically starting from current month
             generatePeriods() {
                 const today = new Date();
                 let currentYear = today.getFullYear();
-                let currentMonth = today.getMonth() + 1; // 1-12
+                let currentMonth = today.getMonth() + 1;
     const periods = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    // Generate 4 quarters (12 months) starting from current month
     for (let quarterNum = 0; quarterNum < 4; quarterNum++) {
         const months = [];
         const years = [];
         
-        // Generate 3 months for this quarter
         for (let i = 0; i < 3; i++) {
             let month = currentMonth + (quarterNum * 3) + i;
             let year = currentYear;
             
-            // Handle year rollover
             while (month > 12) {
                 month -= 12;
                 year++;
@@ -461,7 +461,6 @@ syncQueue: 0,
             years.push(year);
         }
         
-        // Build label showing year transition if needed
         const firstYear = years[0];
         const lastYear = years[2];
         
@@ -474,18 +473,19 @@ syncQueue: 0,
         
         const id = `${monthNames[months[0]-1].toLowerCase()}-${monthNames[months[2]-1].toLowerCase()}-${firstYear}`;
         
-periods.push({ 
-    id, 
-    label, 
-    months,
-    years,  
-    year: firstYear
-});
+        periods.push({ 
+            id, 
+            label, 
+            months,
+            years,  
+            year: firstYear
+        });
     }
     
     this.periods = periods;
     this.selectedPeriod = periods[0].id;
 },
+
             roles: {
                 'thursday-hall': [
                     { id: 'managers', name: 'Managers', time: '9:45am-1:30pm', capacity: 2 },
@@ -494,6 +494,7 @@ periods.push({
                     { id: 'dishes', name: 'Dishes', time: '11:30am-1:30pm', capacity: 1 },
                     { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
                     { id: 'giveaway', name: 'Giveaway Table', time: '10:45am-12:45pm', capacity: 2 },
+                    { id: 'supported-vol', name: '🧡 Supported Vols', time: '10:00am-11:00am', capacity: 3, adminOnly: true },
                 ],
                 'saturday-hall': [
                     { id: 'managers', name: 'Managers', time: '2:45pm-6:30pm', capacity: 2 },
@@ -503,6 +504,7 @@ periods.push({
                     { id: 'dishes', name: 'Dishes', time: '4:30pm-6:30pm', capacity: 1 },
                     { id: 'laundry', name: 'Laundry', time: 'Various', capacity: 1 },
                     { id: 'giveaway', name: 'Giveaway Table', time: '3:45pm-5:45pm', capacity: 2 },
+                    { id: 'supported-vol', name: '🧡 Supported Vols', time: '3:00pm-5:00pm', capacity: 3, adminOnly: true },
                 ],
                 'weekly-tasks': [
                     { id: 'wed-pickup', name: 'Wed Bakers Delight', time: '4:55pm', capacity: 1 },
@@ -516,8 +518,8 @@ periods.push({
                 this.render();
             },
 
-getVisibleRoles(view) {
-    const event = (this.specialEvents || []).find(e => e.id === view);
+            getVisibleRoles(view) {
+                const event = (this.specialEvents || []).find(e => e.id === view);
                 if (event) {
                     return event.roles;
                 }
@@ -697,13 +699,13 @@ getVisibleRoles(view) {
                 const { view, dateStr, roleId, signup } = this.editingSignup;
                 
                 try {
-        await googleAPI.call('updateSignup', {
-    id: signup.id,
-    volunteer_name: newName.trim()
-});
+                    await googleAPI.call('updateSignup', {
+                        id: signup.id,
+                        volunteer_name: newName.trim()
+                    });
 
-await this.loadSignups();
-this.showNotification('Name updated successfully!');
+                    await this.loadSignups();
+                    this.showNotification('Name updated successfully!');
                     
                 } catch (e) {
                     console.error('Error updating:', e);
@@ -759,31 +761,33 @@ this.showNotification('Name updated successfully!');
                 const duration = type === 'success' ? 5000 : 3000;
                 setTimeout(() => notif.remove(), duration);
             },
- async init() {
-    this.generatePeriods();
-    this.isLoading = true;
-    this.render();
-    
- await Promise.all([
-    this.loadSignups(),
-    this.loadSpecialEvents()
-]);
-    
-    this.isLoading = false;
-    this.isInitialized = true;
-    this.render();
-    
-    setInterval(() => this.createBackup(), 300000);
-    this.createBackup();
-    
-    window.addEventListener('beforeunload', (e) => {
-        if (this.syncQueue > 0) {
-            e.preventDefault();
-            e.returnValue = 'Changes are still syncing. Are you sure you want to leave?';
-            return e.returnValue;
-        }
-    });
-},
+
+            async init() {
+                this.generatePeriods();
+                this.isLoading = true;
+                this.render();
+                
+                await Promise.all([
+                    this.loadSignups(),
+                    this.loadSpecialEvents()
+                ]);
+                
+                this.isLoading = false;
+                this.isInitialized = true;
+                this.render();
+                
+                setInterval(() => this.createBackup(), 300000);
+                this.createBackup();
+                
+                window.addEventListener('beforeunload', (e) => {
+                    if (this.syncQueue > 0) {
+                        e.preventDefault();
+                        e.returnValue = 'Changes are still syncing. Are you sure you want to leave?';
+                        return e.returnValue;
+                    }
+                });
+            },
+
             async loadSignups() {
                 try {
                     const response = await googleAPI.call('getSignups');
@@ -813,7 +817,7 @@ this.showNotification('Name updated successfully!');
                         if (setting.setting_type === 'note') {
                             this.dateNotes[setting.setting_key] = setting.setting_value;
                         } else if (setting.setting_type === 'giveaway') {
-                         this.giveawayDates[setting.setting_key] = (setting.setting_value === 'true' || setting.setting_value === 'TRUE' || setting.setting_value === true);
+                            this.giveawayDates[setting.setting_key] = (setting.setting_value === 'true' || setting.setting_value === 'TRUE' || setting.setting_value === true);
                         }
                     });
                     
@@ -829,29 +833,17 @@ this.showNotification('Name updated successfully!');
                     
                     const saved = localStorage.getItem('uts-roster');
                     if (saved) {
-                        try {
-                            this.signups = JSON.parse(saved);
-                        } catch (e2) {
-                            this.signups = {};
-                        }
+                        try { this.signups = JSON.parse(saved); } catch (e2) { this.signups = {}; }
                     }
                     
                     const savedNotes = localStorage.getItem('uts-date-notes');
                     if (savedNotes) {
-                        try {
-                            this.dateNotes = JSON.parse(savedNotes);
-                        } catch (e2) {
-                            this.dateNotes = {};
-                        }
+                        try { this.dateNotes = JSON.parse(savedNotes); } catch (e2) { this.dateNotes = {}; }
                     }
                     
                     const savedGiveaway = localStorage.getItem('uts-giveaway-dates');
                     if (savedGiveaway) {
-                        try {
-                            this.giveawayDates = JSON.parse(savedGiveaway);
-                        } catch (e2) {
-                            this.giveawayDates = {};
-                        }
+                        try { this.giveawayDates = JSON.parse(savedGiveaway); } catch (e2) { this.giveawayDates = {}; }
                     }
                     
                     this.connectionStatus = 'error';
@@ -862,161 +854,158 @@ this.showNotification('Name updated successfully!');
                 }
             },
 
-       async loadSpecialEvents() {
-    try {
-        const response = await googleAPI.call('getSpecialEvents');
-        this.specialEvents = response.data || [];
-        localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
-        console.log('📥 Loaded special events from Google Sheets:', this.specialEvents.length);
-    } catch (e) {
-        console.error('Error loading special events:', e);
-        const saved = localStorage.getItem('uts-special-events');
-        if (saved) {
-            try {
-                this.specialEvents = JSON.parse(saved);
-            } catch (e2) {
-                this.specialEvents = [];
-            }
-        }
-    }
-},
-async saveSpecialEvents() {
-    localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
-    this.createBackup();
-},
-async createSpecialEvent(name, dates, roles, visible = true) {
-    const event = {
-        id: 'event-' + Date.now().toString(),
-        name: name.trim(),
-        dates: dates,
-        roles: roles,
-        visible: visible,
-        created: new Date().toISOString()
-    };
-    
-    try {
-        await googleAPI.call('saveSpecialEvent', {
-            event_data: JSON.stringify(event)
-        });
-        
-        this.specialEvents.push(event);
-        
-        this.signups[event.id] = {};
-        dates.forEach(dateStr => {
-            this.signups[event.id][dateStr] = {};
-            roles.forEach(role => {
-                this.signups[event.id][dateStr][role.id] = [];
-            });
-        });
-        
-        await this.saveSpecialEvents();
-        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-        this.showNotification(`Event "${name}" created!`);
-        return event.id;
-    } catch (e) {
-        console.error('Error creating event:', e);
-        this.showNotification('Error creating event', 'error');
-    }
-},
-async deleteSpecialEvent(eventId) {
-    const event = this.specialEvents.find(e => e.id === eventId);
-    if (!event) return;
-    
-    if (!confirm(`Delete event "${event.name}"? This will remove all volunteer signups for this event.`)) return;
-    
-    try {
-        await googleAPI.call('deleteSpecialEvent', {
-            event_id: eventId
-        });
-        
-        this.specialEvents = this.specialEvents.filter(e => e.id !== eventId);
-        delete this.signups[eventId];
-        
-        await this.saveSpecialEvents();
-        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-        this.showNotification('Event deleted');
-    } catch (e) {
-        console.error('Error deleting event:', e);
-        this.showNotification('Error deleting event', 'error');
-    }
-},
-async updateSpecialEvent(eventId, name, dates, roles, visible) {
-    const event = this.specialEvents.find(e => e.id === eventId);
-    if (!event) return;
-    
-    event.name = name.trim();
-    event.dates = dates;
-    event.roles = roles;
-    event.visible = visible;
-    
-    try {
-        await googleAPI.call('saveSpecialEvent', {
-            event_data: JSON.stringify(event)
-        });
-        
-        this.signups[eventId] = this.signups[eventId] || {};
-        dates.forEach(dateStr => {
-            this.signups[eventId][dateStr] = this.signups[eventId][dateStr] || {};
-            roles.forEach(role => {
-                if (!this.signups[eventId][dateStr][role.id]) {
-                    this.signups[eventId][dateStr][role.id] = [];
+            async loadSpecialEvents() {
+                try {
+                    const response = await googleAPI.call('getSpecialEvents');
+                    this.specialEvents = response.data || [];
+                    localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
+                    console.log('📥 Loaded special events from Google Sheets:', this.specialEvents.length);
+                } catch (e) {
+                    console.error('Error loading special events:', e);
+                    const saved = localStorage.getItem('uts-special-events');
+                    if (saved) {
+                        try { this.specialEvents = JSON.parse(saved); } catch (e2) { this.specialEvents = []; }
+                    }
                 }
-            });
-        });
-        
-        await this.saveSpecialEvents();
-        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-        this.showNotification(`Event "${name}" updated!`);
-    } catch (e) {
-        console.error('Error updating event:', e);
-        this.showNotification('Error updating event', 'error');
-    }
-},
-async toggleEventVisibility(eventId) {
-    const event = this.specialEvents.find(e => e.id === eventId);
-    if (!event) return;
-    
-    event.visible = !event.visible;
-    
-    try {
-        await googleAPI.call('saveSpecialEvent', {
-            event_data: JSON.stringify(event)
-        });
-        
-        await this.saveSpecialEvents();
-        this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
-        this.render();
-    } catch (e) {
-        console.error('Error toggling visibility:', e);
-        this.showNotification('Error updating visibility', 'error');
-    }
-},
+            },
+
+            async saveSpecialEvents() {
+                localStorage.setItem('uts-special-events', JSON.stringify(this.specialEvents));
+                this.createBackup();
+            },
+
+            async createSpecialEvent(name, dates, roles, visible = true) {
+                const event = {
+                    id: 'event-' + Date.now().toString(),
+                    name: name.trim(),
+                    dates: dates,
+                    roles: roles,
+                    visible: visible,
+                    created: new Date().toISOString()
+                };
+                
+                try {
+                    await googleAPI.call('saveSpecialEvent', {
+                        event_data: JSON.stringify(event)
+                    });
+                    
+                    this.specialEvents.push(event);
+                    
+                    this.signups[event.id] = {};
+                    dates.forEach(dateStr => {
+                        this.signups[event.id][dateStr] = {};
+                        roles.forEach(role => {
+                            this.signups[event.id][dateStr][role.id] = [];
+                        });
+                    });
+                    
+                    await this.saveSpecialEvents();
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    this.showNotification(`Event "${name}" created!`);
+                    return event.id;
+                } catch (e) {
+                    console.error('Error creating event:', e);
+                    this.showNotification('Error creating event', 'error');
+                }
+            },
+
+            async deleteSpecialEvent(eventId) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                if (!confirm(`Delete event "${event.name}"? This will remove all volunteer signups for this event.`)) return;
+                
+                try {
+                    await googleAPI.call('deleteSpecialEvent', { event_id: eventId });
+                    
+                    this.specialEvents = this.specialEvents.filter(e => e.id !== eventId);
+                    delete this.signups[eventId];
+                    
+                    await this.saveSpecialEvents();
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    this.showNotification('Event deleted');
+                } catch (e) {
+                    console.error('Error deleting event:', e);
+                    this.showNotification('Error deleting event', 'error');
+                }
+            },
+
+            async updateSpecialEvent(eventId, name, dates, roles, visible) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                event.name = name.trim();
+                event.dates = dates;
+                event.roles = roles;
+                event.visible = visible;
+                
+                try {
+                    await googleAPI.call('saveSpecialEvent', { event_data: JSON.stringify(event) });
+                    
+                    this.signups[eventId] = this.signups[eventId] || {};
+                    dates.forEach(dateStr => {
+                        this.signups[eventId][dateStr] = this.signups[eventId][dateStr] || {};
+                        roles.forEach(role => {
+                            if (!this.signups[eventId][dateStr][role.id]) {
+                                this.signups[eventId][dateStr][role.id] = [];
+                            }
+                        });
+                    });
+                    
+                    await this.saveSpecialEvents();
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    this.showNotification(`Event "${name}" updated!`);
+                } catch (e) {
+                    console.error('Error updating event:', e);
+                    this.showNotification('Error updating event', 'error');
+                }
+            },
+
+            async toggleEventVisibility(eventId) {
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                event.visible = !event.visible;
+                
+                try {
+                    await googleAPI.call('saveSpecialEvent', { event_data: JSON.stringify(event) });
+                    await this.saveSpecialEvents();
+                    this.showNotification(event.visible ? 'Event visible on welcome screen' : 'Event hidden from welcome screen');
+                    this.render();
+                } catch (e) {
+                    console.error('Error toggling visibility:', e);
+                    this.showNotification('Error updating visibility', 'error');
+                }
+            },
+
             async editSpecialEvent(eventId) {
-    const event = this.specialEvents.find(e => e.id === eventId);
-    if (!event) return;
-    
-    this.editingEvent = eventId;
-    this.newEventRoles = JSON.parse(JSON.stringify(event.roles));
-    this.render();
-},
+                const event = this.specialEvents.find(e => e.id === eventId);
+                if (!event) return;
+                
+                this.editingEvent = eventId;
+                this.newEventRoles = JSON.parse(JSON.stringify(event.roles));
+                this.render();
+            },
+
             addEventDate() {
-    const container = document.getElementById('eventDates');
-    const div = document.createElement('div');
-    div.className = 'flex gap-2';
-    
-    const dateInput = document.createElement('input');
-    dateInput.type = 'date';
-    dateInput.className = 'event-date-input flex-1 p-2 border rounded-lg';
-    
-    const removeBtn = document.createElement('button');
-    removeBtn.textContent = '✕';
-    removeBtn.className = 'px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200';
-    removeBtn.onclick = function() { div.remove(); };
-    
-    div.appendChild(dateInput);
-    div.appendChild(removeBtn);
-    container.appendChild(div);
-},
+                const container = document.getElementById('eventDates');
+                const div = document.createElement('div');
+                div.className = 'flex gap-2';
+                
+                const dateInput = document.createElement('input');
+                dateInput.type = 'date';
+                dateInput.className = 'event-date-input flex-1 p-2 border rounded-lg';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '✕';
+                removeBtn.className = 'px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200';
+                removeBtn.onclick = function() { div.remove(); };
+                
+                div.appendChild(dateInput);
+                div.appendChild(removeBtn);
+                container.appendChild(div);
+            },
+
             async saveNote(view, dateStr, note) {
                 const key = `${view}-${dateStr}`;
                 
@@ -1050,123 +1039,103 @@ async toggleEventVisibility(eventId) {
                 return this.dateNotes[key] || '';
             },
 
-   async addSignup() {
-    if (!this.volunteerName.trim()) return alert('Please enter your name');
-    const { view, dateStr, roleId } = this.selectedSlot;
-    
-    const role = this.getVisibleRoles(view).find(r => r.id === roleId);
-    const currentSignups = this.getSignups(view, dateStr, roleId);
-    
-    if (currentSignups.length >= role.capacity) {
-        const override = confirm(`⚠️ This role is at full capacity (${role.capacity}/${role.capacity}).\n\nDo you want to add an extra volunteer anyway?`);
-        if (!override) return;
-    }
-    
-    // Close modal and show optimistically
-    this.showModal = false;
-    this.volunteerName = '';
-    
-    // Add to local data immediately
-    if (!this.signups[view]) this.signups[view] = {};
-    if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
-    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-    
-    const tempSignup = {
-        id: 'temp-' + Date.now(),
-        name: this.volunteerName || document.querySelector('input[placeholder="Enter your full name"]')?.value || 'Unknown'
-    };
-    
-    this.signups[view][dateStr][roleId].push(tempSignup);
-    this.render();
-    
-    // Show sync indicator
-    this.syncQueue++;
-    this.isSyncing = true;
-    this.showNotification('💾 Syncing...', 'warning');
-    
-    // Sync in background
-    try {
-        const result = await googleAPI.call('addSignup', {
-            roster_type: view,
-            shift_date: dateStr,
-            role_id: roleId,
-            volunteer_name: tempSignup.name
-        });
-        
-        // Replace temp ID with real ID
-        const signup = this.signups[view][dateStr][roleId].find(s => s.id === tempSignup.id);
-        if (signup && result.id) {
-            signup.id = result.id;
-        }
-        
-        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-        this.syncQueue--;
-        this.isSyncing = this.syncQueue > 0;
-        
-        this.showNotification('✅ Saved!', 'success');
-        
-    } catch (e) {
-        console.error('Error syncing signup:', e);
-        
-        // Remove the failed signup
-        this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s.id !== tempSignup.id);
-        
-        this.syncQueue--;
-        this.isSyncing = this.syncQueue > 0;
-        this.render();
-        
-        this.showNotification('❌ Failed to save. Please try again.', 'error');
-    }
-},
-     async removeSignup(view, dateStr, roleId, signup) {
-    if (!confirm(`Remove ${signup.name}?`)) return;
-    
-    // Remove from local data immediately
-    const index = this.signups[view][dateStr][roleId].findIndex(s => s.id === signup.id);
-    if (index > -1) {
-        this.signups[view][dateStr][roleId].splice(index, 1);
-    }
-    this.render();
-    
-    // Show sync indicator
-    this.syncQueue++;
-    this.isSyncing = true;
-    this.showNotification('💾 Syncing...', 'warning');
-    
-    // Sync in background
-    try {
-        await googleAPI.call('removeSignup', { id: signup.id });
-        
-        localStorage.setItem('uts-roster', JSON.stringify(this.signups));
-        this.syncQueue--;
-        this.isSyncing = this.syncQueue > 0;
-        
-        this.showNotification('✅ Removed!', 'success');
-        
-    } catch (e) {
-        console.error('Error syncing removal:', e);
-        
-        // Re-add the signup since removal failed
-        if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
-        this.signups[view][dateStr][roleId].push(signup);
-        
-        this.syncQueue--;
-        this.isSyncing = this.syncQueue > 0;
-        this.render();
-        
-        this.showNotification('❌ Failed to remove. Please try again.', 'error');
-    }
-},
+            async addSignup() {
+                if (!this.volunteerName.trim()) return alert('Please enter your name');
+                const { view, dateStr, roleId } = this.selectedSlot;
+                
+                const role = this.getVisibleRoles(view).find(r => r.id === roleId);
+                const currentSignups = this.getSignups(view, dateStr, roleId);
+                
+                if (currentSignups.length >= role.capacity) {
+                    const override = confirm(`⚠️ This role is at full capacity (${role.capacity}/${role.capacity}).\n\nDo you want to add an extra volunteer anyway?`);
+                    if (!override) return;
+                }
+                
+                this.showModal = false;
+                this.volunteerName = '';
+                
+                if (!this.signups[view]) this.signups[view] = {};
+                if (!this.signups[view][dateStr]) this.signups[view][dateStr] = {};
+                if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+                
+                const tempSignup = {
+                    id: 'temp-' + Date.now(),
+                    name: this.volunteerName || document.querySelector('input[placeholder="Enter your full name"]')?.value || 'Unknown'
+                };
+                
+                this.signups[view][dateStr][roleId].push(tempSignup);
+                this.render();
+                
+                this.syncQueue++;
+                this.isSyncing = true;
+                this.showNotification('💾 Syncing...', 'warning');
+                
+                try {
+                    const result = await googleAPI.call('addSignup', {
+                        roster_type: view,
+                        shift_date: dateStr,
+                        role_id: roleId,
+                        volunteer_name: tempSignup.name
+                    });
+                    
+                    const signup = this.signups[view][dateStr][roleId].find(s => s.id === tempSignup.id);
+                    if (signup && result.id) {
+                        signup.id = result.id;
+                    }
+                    
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    this.syncQueue--;
+                    this.isSyncing = this.syncQueue > 0;
+                    this.showNotification('✅ Saved!', 'success');
+                    
+                } catch (e) {
+                    console.error('Error syncing signup:', e);
+                    this.signups[view][dateStr][roleId] = this.signups[view][dateStr][roleId].filter(s => s.id !== tempSignup.id);
+                    this.syncQueue--;
+                    this.isSyncing = this.syncQueue > 0;
+                    this.render();
+                    this.showNotification('❌ Failed to save. Please try again.', 'error');
+                }
+            },
+
+            async removeSignup(view, dateStr, roleId, signup) {
+                if (!confirm(`Remove ${signup.name}?`)) return;
+                
+                const index = this.signups[view][dateStr][roleId].findIndex(s => s.id === signup.id);
+                if (index > -1) {
+                    this.signups[view][dateStr][roleId].splice(index, 1);
+                }
+                this.render();
+                
+                this.syncQueue++;
+                this.isSyncing = true;
+                this.showNotification('💾 Syncing...', 'warning');
+                
+                try {
+                    await googleAPI.call('removeSignup', { id: signup.id });
+                    localStorage.setItem('uts-roster', JSON.stringify(this.signups));
+                    this.syncQueue--;
+                    this.isSyncing = this.syncQueue > 0;
+                    this.showNotification('✅ Removed!', 'success');
+                    
+                } catch (e) {
+                    console.error('Error syncing removal:', e);
+                    if (!this.signups[view][dateStr][roleId]) this.signups[view][dateStr][roleId] = [];
+                    this.signups[view][dateStr][roleId].push(signup);
+                    this.syncQueue--;
+                    this.isSyncing = this.syncQueue > 0;
+                    this.render();
+                    this.showNotification('❌ Failed to remove. Please try again.', 'error');
+                }
+            },
+
             getSignups(view, dateStr, roleId) {
                 return this.signups[view]?.[dateStr]?.[roleId] || [];
             },
 
             getNextShiftStats() {
                 if (this.currentView === 'weekly-tasks') return null;
-                
-                if (this.currentView !== 'thursday-hall' && this.currentView !== 'saturday-hall') {
-                    return null;
-                }
+                if (this.currentView !== 'thursday-hall' && this.currentView !== 'saturday-hall') return null;
                 
                 const nextDate = this.getNextUpcomingDate(this.currentView);
                 if (!nextDate) return null;
@@ -1176,9 +1145,9 @@ async toggleEventVisibility(eventId) {
                 let filledSlots = 0;
                 
                 roles.forEach(role => {
-                    if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, nextDate)) {
-                        return;
-                    }
+                    // Skip adminOnly roles from coverage stats
+                    if (role.adminOnly) return;
+                    if (role.id === 'giveaway' && !this.isGiveawayEnabled(this.currentView, nextDate)) return;
                     
                     const signups = this.getSignups(this.currentView, nextDate, role.id);
                     totalSlots += role.capacity;
@@ -1205,90 +1174,79 @@ async toggleEventVisibility(eventId) {
                 let m = month;
                 let y = year;
                 
-                if (m < 3) {
-                    m += 12;
-                    y--;
-                }
+                if (m < 3) { m += 12; y--; }
                 
                 const q = day;
                 const K = y % 100;
                 const J = Math.floor(y / 100);
-                
                 const h = (q + Math.floor((13 * (m + 1)) / 5) + K + Math.floor(K / 4) + Math.floor(J / 4) - (2 * J)) % 7;
                 
                 return (h + 6) % 7;
             },
-getDatesForPeriod() {
-    // Check if viewing a special event
-    const specialEvent = (this.specialEvents || []).find(e => e.id === this.currentView);
-    if (specialEvent) {
-        // Return ONLY the dates specified for this event
-        return specialEvent.dates.map(dateStr => {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            const date = new Date(year, month - 1, day);
-            return {
-                date: dateStr,
-                label: date.toLocaleDateString('en-NZ', { 
-                    weekday: 'long', 
-                    day: 'numeric', 
-                    month: 'long',
-                    year: 'numeric'
-                })
-            };
-        }).sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-    
-    // Regular roster logic (thursday/saturday/weekly)
-    const period = (this.periods || []).find(p => p.id === this.selectedPeriod);
-    if (!period) return [];
-    
-    const dates = [];
-    
-    if (this.currentView === 'weekly-tasks') {
-        const targetDay = 3;
-        period.months.forEach((month, index) => {
-            const year = period.years ? period.years[index] : period.year;
-            
-            for (let day = 1; day <= 31; day++) {
-                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+            getDatesForPeriod() {
+                const specialEvent = (this.specialEvents || []).find(e => e.id === this.currentView);
+                if (specialEvent) {
+                    return specialEvent.dates.map(dateStr => {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        return {
+                            date: dateStr,
+                            label: date.toLocaleDateString('en-NZ', { 
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                            })
+                        };
+                    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+                }
                 
-                const testDate = new Date(year, month - 1, day);
-                if (testDate.getMonth() !== month - 1) break;
+                const period = (this.periods || []).find(p => p.id === this.selectedPeriod);
+                if (!period) return [];
                 
-                if (this.getDayOfWeek(dateStr) === targetDay) {
-                    const wed = new Date(year, month - 1, day);
-                    const thurs = new Date(year, month - 1, day + 1);
-                    
-                    dates.push({ 
-                        date: dateStr, 
-                        label: `${formatSafeDate(dateStr)} - ${formatSafeDate(thurs.toISOString().split('T')[0])}` 
+                const dates = [];
+                
+                if (this.currentView === 'weekly-tasks') {
+                    const targetDay = 3;
+                    period.months.forEach((month, index) => {
+                        const year = period.years ? period.years[index] : period.year;
+                        
+                        for (let day = 1; day <= 31; day++) {
+                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const testDate = new Date(year, month - 1, day);
+                            if (testDate.getMonth() !== month - 1) break;
+                            
+                            if (this.getDayOfWeek(dateStr) === targetDay) {
+                                const wed = new Date(year, month - 1, day);
+                                const thurs = new Date(year, month - 1, day + 1);
+                                dates.push({ 
+                                    date: dateStr, 
+                                    label: `${formatSafeDate(dateStr)} - ${formatSafeDate(thurs.toISOString().split('T')[0])}` 
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
+                    period.months.forEach((month, index) => {
+                        const year = period.years ? period.years[index] : period.year;
+                        
+                        for (let day = 1; day <= 31; day++) {
+                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const testDate = new Date(year, month - 1, day);
+                            if (testDate.getMonth() !== month - 1) break;
+                            
+                            if (this.getDayOfWeek(dateStr) === targetDay) {
+                                const date = new Date(year, month - 1, day);
+                                dates.push({
+                                    date: dateStr,
+                                    label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
+                                });
+                            }
+                        }
                     });
                 }
-            }
-        });
-    } else {
-        const targetDay = this.currentView === 'thursday-hall' ? 4 : 6;
-        period.months.forEach((month, index) => {
-            const year = period.years ? period.years[index] : period.year;
-            
-            for (let day = 1; day <= 31; day++) {
-                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                
-                const testDate = new Date(year, month - 1, day);
-                if (testDate.getMonth() !== month - 1) break;
-                
-                if (this.getDayOfWeek(dateStr) === targetDay) {
-                    const date = new Date(year, month - 1, day);
-                    dates.push({
-                        date: dateStr,
-                        label: date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })
-                    });
-                }
-            }
-        });
-    }
-    return dates;
-},
+                return dates;
+            },
+
             generateReport() {
                 const stats = {
                     totalSignups: 0,
@@ -1328,33 +1286,23 @@ getDatesForPeriod() {
                                 
                                 if (roleId === 'managers') {
                                     stats.volunteersByRole.managers.add(fullName);
-                                    if (!stats.volunteerCountsByRole.managers[fullName]) {
-                                        stats.volunteerCountsByRole.managers[fullName] = 0;
-                                    }
+                                    if (!stats.volunteerCountsByRole.managers[fullName]) stats.volunteerCountsByRole.managers[fullName] = 0;
                                     stats.volunteerCountsByRole.managers[fullName]++;
                                 } else if (roleId.includes('hall-help')) {
                                     stats.volunteersByRole.hallHelp.add(fullName);
-                                    if (!stats.volunteerCountsByRole.hallHelp[fullName]) {
-                                        stats.volunteerCountsByRole.hallHelp[fullName] = 0;
-                                    }
+                                    if (!stats.volunteerCountsByRole.hallHelp[fullName]) stats.volunteerCountsByRole.hallHelp[fullName] = 0;
                                     stats.volunteerCountsByRole.hallHelp[fullName]++;
                                 } else if (roleId === 'drinks') {
                                     stats.volunteersByRole.drinks.add(fullName);
-                                    if (!stats.volunteerCountsByRole.drinks[fullName]) {
-                                        stats.volunteerCountsByRole.drinks[fullName] = 0;
-                                    }
+                                    if (!stats.volunteerCountsByRole.drinks[fullName]) stats.volunteerCountsByRole.drinks[fullName] = 0;
                                     stats.volunteerCountsByRole.drinks[fullName]++;
                                 } else if (roleId === 'dishes') {
                                     stats.volunteersByRole.dishes.add(fullName);
-                                    if (!stats.volunteerCountsByRole.dishes[fullName]) {
-                                        stats.volunteerCountsByRole.dishes[fullName] = 0;
-                                    }
+                                    if (!stats.volunteerCountsByRole.dishes[fullName]) stats.volunteerCountsByRole.dishes[fullName] = 0;
                                     stats.volunteerCountsByRole.dishes[fullName]++;
                                 } else if (roleId === 'laundry') {
                                     stats.volunteersByRole.laundry.add(fullName);
-                                    if (!stats.volunteerCountsByRole.laundry[fullName]) {
-                                        stats.volunteerCountsByRole.laundry[fullName] = 0;
-                                    }
+                                    if (!stats.volunteerCountsByRole.laundry[fullName]) stats.volunteerCountsByRole.laundry[fullName] = 0;
                                     stats.volunteerCountsByRole.laundry[fullName]++;
                                 }
                             });
@@ -1363,21 +1311,11 @@ getDatesForPeriod() {
                 }
                 
                 stats.topByRole = {
-                    managers: Object.entries(stats.volunteerCountsByRole.managers)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10),
-                    hallHelp: Object.entries(stats.volunteerCountsByRole.hallHelp)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10),
-                    drinks: Object.entries(stats.volunteerCountsByRole.drinks)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10),
-                    dishes: Object.entries(stats.volunteerCountsByRole.dishes)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10),
-                    laundry: Object.entries(stats.volunteerCountsByRole.laundry)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10)
+                    managers: Object.entries(stats.volunteerCountsByRole.managers).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                    hallHelp: Object.entries(stats.volunteerCountsByRole.hallHelp).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                    drinks: Object.entries(stats.volunteerCountsByRole.drinks).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                    dishes: Object.entries(stats.volunteerCountsByRole.dishes).sort((a, b) => b[1] - a[1]).slice(0, 10),
+                    laundry: Object.entries(stats.volunteerCountsByRole.laundry).sort((a, b) => b[1] - a[1]).slice(0, 10)
                 };
                 
                 return stats;
@@ -1481,17 +1419,11 @@ getDatesForPeriod() {
                 let newMonths = [];
                 let startMonth = lastMonth + 1;
                 
-                if (startMonth > 12) {
-                    startMonth = 1;
-                    newYear++;
-                }
+                if (startMonth > 12) { startMonth = 1; newYear++; }
                 
                 for (let i = 0; i < 3; i++) {
                     let month = startMonth + i;
-                    if (month > 12) {
-                        month = month - 12;
-                        newYear = lastYear + 1;
-                    }
+                    if (month > 12) { month = month - 12; newYear = lastYear + 1; }
                     newMonths.push(month);
                 }
                 
@@ -1499,13 +1431,7 @@ getDatesForPeriod() {
                 const label = `${monthNames[newMonths[0]-1]} - ${monthNames[newMonths[2]-1]} ${newYear}`;
                 const id = `${monthNames[newMonths[0]-1].toLowerCase()}-${monthNames[newMonths[2]-1].toLowerCase()}-${newYear}`;
                 
-                this.periods.push({
-                    id: id,
-                    label: label,
-                    months: newMonths,
-                    year: newYear
-                });
-                
+                this.periods.push({ id, label, months: newMonths, year: newYear });
                 this.showNotification(`Added quarter: ${label}`, 'success');
                 this.render();
             },
@@ -1532,43 +1458,41 @@ getDatesForPeriod() {
                 this.render();
             },
 
-  render() {
-    try {
-        const appEl = document.getElementById('app');
-        if (!appEl) return;
-        
-        // 1. Safety check
-        if (!this.periods || this.periods.length === 0) return;
-        
-        // 2. Loading Screen
-        if (this.isLoading) {
-            appEl.innerHTML = `
-                <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
-                    <div class="text-center p-8 bg-white rounded-lg shadow-xl">
-                        <div class="loading-spinner mx-auto mb-4"></div>
-                        <p class="text-gray-900 text-xl font-bold mb-2">Loading Under the Stars Roster</p>
-                        <p class="text-gray-600 text-sm">Loading signups and events...</p>
-                    </div>
-                </div>`;
-            return;
-        }
+            render() {
+                try {
+                    const appEl = document.getElementById('app');
+                    if (!appEl) return;
+                    
+                    if (!this.periods || this.periods.length === 0) return;
+                    
+                    if (this.isLoading) {
+                        appEl.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+                                <div class="text-center p-8 bg-white rounded-lg shadow-xl">
+                                    <div class="loading-spinner mx-auto mb-4"></div>
+                                    <p class="text-gray-900 text-xl font-bold mb-2">Loading Under the Stars Roster</p>
+                                    <p class="text-gray-600 text-sm">Loading signups and events...</p>
+                                </div>
+                            </div>`;
+                        return;
+                    }
 
-        // 3. View Logic
-        if (this.showMySignups) {
-            appEl.innerHTML = this.renderMySignups();
-        } else if (this.currentView === 'welcome') {
-            appEl.innerHTML = this.renderWelcome();
-        } else if (this.currentView === 'admin') {
-            appEl.innerHTML = this.renderAdmin();
-       } else {
-    appEl.innerHTML = this.renderRoster();
-}
-    } catch (error) {
-        console.error("Render Error:", error);
-        document.getElementById('app').innerHTML = `<div class="p-6 text-red-500">⚠️ Display Error. Please refresh.</div>`;
-    }
-},
-renderMySignups() {
+                    if (this.showMySignups) {
+                        appEl.innerHTML = this.renderMySignups();
+                    } else if (this.currentView === 'welcome') {
+                        appEl.innerHTML = this.renderWelcome();
+                    } else if (this.currentView === 'admin') {
+                        appEl.innerHTML = this.renderAdmin();
+                    } else {
+                        appEl.innerHTML = this.renderRoster();
+                    }
+                } catch (error) {
+                    console.error("Render Error:", error);
+                    document.getElementById('app').innerHTML = `<div class="p-6 text-red-500">⚠️ Display Error. Please refresh.</div>`;
+                }
+            },
+
+            renderMySignups() {
                 return `
                     <div class="min-h-screen p-4">
                         <div class="max-w-4xl mx-auto">
@@ -1677,7 +1601,7 @@ renderMySignups() {
                                         Additional Weekly Tasks →
                                     </button>
                                     
-                                 ${(this.specialEvents || []).filter(e => e.visible).map(event => `
+                                    ${(this.specialEvents || []).filter(e => e.visible).map(event => `
                                         <button onclick="app.navigateTo('${event.id}');"
                                                 class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition-colors">
                                             ${event.name} →
@@ -1685,19 +1609,19 @@ renderMySignups() {
                                     `).join('')}
                                 </div>
 
-                  ${this.syncQueue > 0 ? `
-    <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print animate-pulse">
-        💾 Syncing ${this.syncQueue} change${this.syncQueue !== 1 ? 's' : ''}... Don't close this page!
-    </div>
-` : this.connectionStatus === 'connected' ? `
-    <div class="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-sm no-print">
-        ✓ Connected - Changes sync across all devices
-    </div>
-` : this.connectionStatus === 'error' ? `
-    <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print">
-        ⚠️ Working offline - Using local storage
-    </div>
-` : ''}
+                                ${this.syncQueue > 0 ? `
+                                    <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print animate-pulse">
+                                        💾 Syncing ${this.syncQueue} change${this.syncQueue !== 1 ? 's' : ''}... Don't close this page!
+                                    </div>
+                                ` : this.connectionStatus === 'connected' ? `
+                                    <div class="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-sm no-print">
+                                        ✓ Connected - Changes sync across all devices
+                                    </div>
+                                ` : this.connectionStatus === 'error' ? `
+                                    <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm no-print">
+                                        ⚠️ Working offline - Using local storage
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -1705,23 +1629,22 @@ renderMySignups() {
             },
 
             renderRoster() {
-    // Safety checks
-    if (!this.periods || this.periods.length === 0) {
-        return '<div class="p-8 text-center">⏳ Loading periods...</div>';
-    }
-    
-    const specialEvent = (this.specialEvents || []).find(e => e.id === this.currentView);
-    const isSpecialEvent = !!specialEvent;
-    
-    const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
-    if (!currentPeriod) {
-        return '<div class="p-8 text-center">⚠️ Period not found. Please refresh.</div>';
-    }
-    
-    const dates = this.getDatesForPeriod();
-    const roles = this.getVisibleRoles(this.currentView);
-    const nextShiftStats = this.getNextShiftStats();
-    const nextShiftDate = this.getNextUpcomingDate();
+                if (!this.periods || this.periods.length === 0) {
+                    return '<div class="p-8 text-center">⏳ Loading periods...</div>';
+                }
+                
+                const specialEvent = (this.specialEvents || []).find(e => e.id === this.currentView);
+                const isSpecialEvent = !!specialEvent;
+                
+                const currentPeriod = this.periods.find(p => p.id === this.selectedPeriod);
+                if (!currentPeriod) {
+                    return '<div class="p-8 text-center">⚠️ Period not found. Please refresh.</div>';
+                }
+                
+                const dates = this.getDatesForPeriod();
+                const roles = this.getVisibleRoles(this.currentView);
+                const nextShiftStats = this.getNextShiftStats();
+                const nextShiftDate = this.getNextUpcomingDate();
 
                 const viewTitle = isSpecialEvent ? specialEvent.name :
                                  this.currentView === 'thursday-hall' ? 'Thursday Hall Help' : 
@@ -1740,11 +1663,7 @@ renderMySignups() {
                     const monthName = date.toLocaleDateString('en-NZ', { month: 'long', year: 'numeric' });
                     
                     if (!datesByMonth[monthKey]) {
-                        datesByMonth[monthKey] = {
-                            name: monthName,
-                            dates: [],
-                            containsToday: false
-                        };
+                        datesByMonth[monthKey] = { name: monthName, dates: [], containsToday: false };
                     }
                     
                     datesByMonth[monthKey].dates.push(d);
@@ -1811,9 +1730,7 @@ renderMySignups() {
                                                     ${nextShiftStats.coverage}%
                                                 </div>
                                                 ${nextShiftStats.needsHelp > 0 ? `
-                                                    <div class="text-xs text-red-600 font-semibold">
-                                                        Need ${nextShiftStats.needsHelp} more!
-                                                    </div>
+                                                    <div class="text-xs text-red-600 font-semibold">Need ${nextShiftStats.needsHelp} more!</div>
                                                 ` : ''}
                                             </div>
                                         </div>
@@ -1862,560 +1779,558 @@ renderMySignups() {
                                         
                                         <div class="month-content ${isCollapsed ? 'collapsed' : ''}">
                                             <div class="bg-white overflow-hidden">
-  <div class="desktop-table-view ${isSpecialEvent ? 'special-event-table' : ''}">
-    <div class="table-container">
-        <table class="w-full">
-                                                        <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
-                                                            <tr>
-                                                                <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
-                                                                ${roles.map(role => `
-                                                                    <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold role-cell">
-                                                                        <div class="font-bold">${role.name}</div>
-                                                                        <div class="text-xs opacity-90">${role.time}</div>
-                                                                    </th>
-                                                                `).join('')}
-                                                                ${this.isAdmin ? `
-                                                                    <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">
-                                                                        <div class="font-bold">Notes</div>
-                                                                        <div class="text-xs opacity-90">Admin only</div>
-                                                                    </th>
-                                                                ` : ''}
-                                                                ${this.isAdmin && this.currentView !== 'weekly-tasks' ? '<th class="p-2 md:p-3 text-center text-xs md:text-sm font-semibold">Giveaway</th>' : ''}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            ${monthData.dates.map((d, i) => {
-                                                                const dateClass = this.getDateClass(d.date);
-                                                                const isNextShift = d.date === nextShiftDate;
-                                                                return `
-                                                                <tr class="border-b hover:bg-gray-50 ${dateClass}">
-                                                                    <td class="p-2 md:p-3 font-semibold text-xs md:text-sm sticky left-0 bg-white z-10 border-r">
-                                                                        <div class="flex flex-col gap-1">
-                                                                            ${isNextShift ? '<div class="next-shift-badge">NEXT</div>' : ''}
-                                                                            <span>${d.label}</span>
-                                                                        </div>
-                                                                    </td>
-                                                                    ${roles.map(role => {
-                                                                        const isGiveawayRole = role.id === 'giveaway';
-                                                                        const giveawayEnabled = this.isGiveawayEnabled(this.currentView, d.date);
-                                                                        
-                                                                        if (isGiveawayRole && !giveawayEnabled) {
+                                                <div class="desktop-table-view ${isSpecialEvent ? 'special-event-table' : ''}">
+                                                    <div class="table-container">
+                                                        <table class="w-full">
+                                                            <thead class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white z-20">
+                                                                <tr>
+                                                                    <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold sticky left-0 bg-indigo-600 z-30">Date</th>
+                                                                    ${roles.map(role => `
+                                                                        <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold role-cell ${role.adminOnly ? 'supported-vol-header' : ''}">
+                                                                            <div class="font-bold">${role.name}</div>
+                                                                            <div class="text-xs opacity-90">${role.time}</div>
+                                                                            ${role.adminOnly ? '<div class="text-xs opacity-75 italic">Admin managed</div>' : ''}
+                                                                        </th>
+                                                                    `).join('')}
+                                                                    ${this.isAdmin ? `
+                                                                        <th class="p-2 md:p-3 text-left text-xs md:text-sm font-semibold">
+                                                                            <div class="font-bold">Notes</div>
+                                                                            <div class="text-xs opacity-90">Admin only</div>
+                                                                        </th>
+                                                                    ` : ''}
+                                                                    ${this.isAdmin && this.currentView !== 'weekly-tasks' ? '<th class="p-2 md:p-3 text-center text-xs md:text-sm font-semibold">Giveaway</th>' : ''}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                ${monthData.dates.map((d, i) => {
+                                                                    const dateClass = this.getDateClass(d.date);
+                                                                    const isNextShift = d.date === nextShiftDate;
+                                                                    return `
+                                                                    <tr class="border-b hover:bg-gray-50 ${dateClass}">
+                                                                        <td class="p-2 md:p-3 font-semibold text-xs md:text-sm sticky left-0 bg-white z-10 border-r">
+                                                                            <div class="flex flex-col gap-1">
+                                                                                ${isNextShift ? '<div class="next-shift-badge">NEXT</div>' : ''}
+                                                                                <span>${d.label}</span>
+                                                                            </div>
+                                                                        </td>
+                                                                        ${roles.map(role => {
+                                                                            const isGiveawayRole = role.id === 'giveaway';
+                                                                            const giveawayEnabled = this.isGiveawayEnabled(this.currentView, d.date);
+                                                                            
+                                                                            if (isGiveawayRole && !giveawayEnabled) {
+                                                                                return `<td class="p-2 md:p-3 text-xs md:text-sm role-cell giveaway-disabled">Not available</td>`;
+                                                                            }
+                                                                            
+                                                                            const signups = this.getSignups(this.currentView, d.date, role.id);
+                                                                            const slotsLeft = role.capacity - signups.length;
+
+                                                                            // ── SUPPORTED VOL: visible to all, editable by admin only ──
+                                                                            if (role.adminOnly) {
+                                                                                return `
+                                                                                    <td class="p-2 md:p-3 text-xs md:text-sm role-cell" style="background:#fff8f0; border-left: 3px solid #f97316;">
+                                                                                        ${signups.map((signup, idx) => `
+                                                                                            <div class="mb-1 flex items-center gap-1">
+                                                                                                <span class="flex-1">🧡 ${signup.name}</span>
+                                                                                                ${this.isAdmin ? `
+                                                                                                    <button onclick="app.removeSignup('${this.currentView}','${d.date}','${role.id}',app.getSignups('${this.currentView}','${d.date}','${role.id}')[${idx}]);" 
+                                                                                                            class="text-red-400 hover:text-red-600 text-sm ml-1">✕</button>
+                                                                                                ` : ''}
+                                                                                            </div>
+                                                                                        `).join('')}
+                                                                                        ${this.isAdmin ? `
+                                                                                            <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+                                                                                                    class="w-full text-left px-2 py-1 text-xs font-semibold rounded border-2 border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100">
+                                                                                                ➕ Add (${slotsLeft} left)
+                                                                                            </button>
+                                                                                        ` : (signups.length === 0 ? `<span class="text-xs text-gray-400 italic">—</span>` : '')}
+                                                                                    </td>
+                                                                                `;
+                                                                            }
+
+                                                                            // ── REGULAR ROLES ──
                                                                             return `
-                                                                                <td class="p-2 md:p-3 text-xs md:text-sm role-cell giveaway-disabled">
-                                                                                    Not available
+                                                                                <td class="p-2 md:p-3 text-xs md:text-sm role-cell">
+                                                                                    ${signups.map(signup => {
+                                                                                        const isEditing = this.editingSignup && 
+                                                                                                        this.editingSignup.view === this.currentView && 
+                                                                                                        this.editingSignup.dateStr === d.date && 
+                                                                                                        this.editingSignup.roleId === role.id && 
+                                                                                                        this.editingSignup.signup === signup;
+                                                                                        return `
+                                                                                            <div class="mb-1 flex items-center gap-1 volunteer-item">
+                                                                                                ${isEditing ? `
+                                                                                                    <input type="text" value="${signup.name}" 
+                                                                                                           id="editInput-${monthKey}-${d.date}-${role.id}"
+                                                                                                           class="flex-1 px-2 py-1 border-2 border-blue-500 rounded"
+                                                                                                           onkeypress="if(event.key==='Enter'){app.saveEdit(this.value);}" />
+                                                                                                    <button onclick="app.saveEdit(document.getElementById('editInput-${monthKey}-${d.date}-${role.id}').value);" class="text-green-600 hover:text-green-800 text-lg">✓</button>
+                                                                                                    <button onclick="app.cancelEdit();" class="text-red-600 hover:text-red-800 text-lg">✕</button>
+                                                                                                ` : `
+                                                                                                    <span class="flex-1">✓ ${signup.name}</span>
+                                                                                                    <button onclick="app.startEdit('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                                                            class="edit-icon text-sm">✏️</button>
+                                                                                                    <button onclick="app.removeSignup('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
+                                                                                                            class="text-red-600 hover:text-red-800 text-sm ml-1">✕</button>
+                                                                                                `}
+                                                                                            </div>
+                                                                                        `;
+                                                                                    }).join('')}
+                                                                                    ${!this.editingSignup || this.editingSignup.view !== this.currentView || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id ? `
+                                                                                        <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
+                                                                                                class="w-full text-left px-2 py-1 mb-1 text-xs font-semibold rounded transition-all
+                                                                                                       ${slotsLeft > 0 
+                                                                                                         ? 'bg-green-50 border-2 border-green-400 text-green-700 hover:bg-green-100 hover:border-green-600' 
+                                                                                                         : 'bg-orange-50 border-2 border-orange-400 text-orange-700 hover:bg-orange-100'}">
+                                                                                            ${slotsLeft > 0 
+                                                                                              ? `✋ Sign me up! (${slotsLeft} ${slotsLeft === 1 ? 'spot' : 'spots'} left)` 
+                                                                                              : '⚠️ FULL - Add anyway?'}
+                                                                                        </button>
+                                                                                    ` : ''}
                                                                                 </td>
                                                                             `;
-                                                                        }
-                                                                        
-                                                                        const signups = this.getSignups(this.currentView, d.date, role.id);
-                                                                        const slotsLeft = role.capacity - signups.length;
-                                                                        return `
-                                                                        <td class="p-2 md:p-3 text-xs md:text-sm role-cell">
-                                                                            ${signups.map(signup => {
-                                                                                const isEditing = this.editingSignup && 
-                                                                                                this.editingSignup.view === this.currentView && 
-                                                                                                this.editingSignup.dateStr === d.date && 
-                                                                                                this.editingSignup.roleId === role.id && 
-                                                                                                this.editingSignup.signup === signup;
-                                                                                
+                                                                        }).join('')}
+                                                                        ${this.isAdmin ? `
+                                                                            <td class="p-2 md:p-3">
+                                                                                <input type="text" 
+                                                                                       placeholder="Add note..." 
+                                                                                       value="${this.getNote(this.currentView, d.date)}"
+                                                                                       onchange="app.saveNote('${this.currentView}', '${d.date}', this.value)"
+                                                                                       class="w-full p-1 text-xs border rounded" />
+                                                                            </td>
+                                                                        ` : ''}
+                                                                        ${this.isAdmin && this.currentView !== 'weekly-tasks' ? `
+                                                                            <td class="p-2 md:p-3 text-center">
+                                                                                <input type="checkbox" 
+                                                                                       ${this.isGiveawayEnabled(this.currentView, d.date) ? 'checked' : ''}
+                                                                                       onchange="app.toggleGiveaway('${this.currentView}', '${d.date}')"
+                                                                                       class="w-4 h-4" />
+                                                                            </td>
+                                                                        ` : ''}
+                                                                    </tr>
+                                                                `}).join('')}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+
+                                                ${isSpecialEvent ? `
+                                                    <div class="mobile-special-event-view">
+                                                        ${monthData.dates.map((d) => {
+                                                            const dateClass = this.getDateClass(d.date);
+                                                            const isNextShift = d.date === nextShiftDate;
+                                                            const rolesForView = this.getVisibleRoles(this.currentView);
+                                                            
+                                                            return `
+                                                                <div class="date-card ${dateClass}">
+                                                                    <div class="date-card-header collapsed">
+                                                                        <div>
+                                                                            ${isNextShift ? '<div class="next-shift-badge" style="display:inline-block;margin-right:8px;">NEXT</div>' : ''}
+                                                                            <span>${d.label}</span>
+                                                                        </div>
+                                                                        <span class="chevron">▼</span>
+                                                                    </div>
+                                                                    <div class="date-card-content collapsed">
+                                                                        ${rolesForView.map(role => {
+                                                                            const signups = this.getSignups(this.currentView, d.date, role.id);
+                                                                            const slotsLeft = role.capacity - signups.length;
+                                                                            
+                                                                            // adminOnly roles in mobile card view
+                                                                            if (role.adminOnly) {
                                                                                 return `
-                                                                                    <div class="mb-1 flex items-center gap-1 volunteer-item">
-                                                                                        ${isEditing ? `
-                                                                                            <input 
-                                                                                                type="text" 
-                                                                                                value="${signup.name}" 
-                                                                                                id="editInput-${monthKey}-${i}"
-                                                                                                class="flex-1 px-2 py-1 border-2 border-blue-500 rounded"
-                                                                                                onkeypress="if(event.key==='Enter'){app.saveEdit(this.value);}"
-                                                                                            />
-                                                                                            <button onclick="app.saveEdit(document.getElementById('editInput-${monthKey}-${i}').value);" class="text-green-600 hover:text-green-800 text-lg">✓</button>
-                                                                                            <button onclick="app.cancelEdit();" class="text-red-600 hover:text-red-800 text-lg">✕</button>
-                                                                                        ` : `
-                                                                                            <span class="flex-1">✓ ${signup.name}</span>
-                                                                                            <button onclick="app.startEdit('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
-                                                                                                    class="edit-icon text-sm">✏️</button>
-                                                                                            <button onclick="app.removeSignup('${this.currentView}', '${d.date}', '${role.id}', app.getSignups('${this.currentView}', '${d.date}', '${role.id}')[${signups.indexOf(signup)}]);" 
-                                                                                                    class="text-red-600 hover:text-red-800 text-sm ml-1">✕</button>
-                                                                                        `}
+                                                                                    <div class="role-card-mobile" style="border-color: #f97316; background: #fff8f0;">
+                                                                                        <h4>${role.name}</h4>
+                                                                                        <div class="time">${role.time}</div>
+                                                                                        ${signups.length > 0 ? `
+                                                                                            <div style="margin-bottom:12px;">
+                                                                                                ${signups.map((signup, idx) => `
+                                                                                                    <div class="volunteer-item-mobile">
+                                                                                                        <span>🧡 ${signup.name}</span>
+                                                                                                        ${this.isAdmin ? `<button onclick="app.removeSignup('${this.currentView}','${d.date}','${role.id}',app.getSignups('${this.currentView}','${d.date}','${role.id}')[${idx}]);" style="background:none;border:none;color:#ef4444;font-size:18px;cursor:pointer;">✕</button>` : ''}
+                                                                                                    </div>
+                                                                                                `).join('')}
+                                                                                            </div>
+                                                                                        ` : (this.isAdmin ? '' : '<p style="font-size:13px;color:#9ca3af;font-style:italic;margin-bottom:8px;">No supported vols assigned</p>')}
+                                                                                        ${this.isAdmin ? `
+                                                                                            <button onclick="app.selectedSlot={view:'${this.currentView}',dateStr:'${d.date}',roleId:'${role.id}'};app.showModal=true;app.render();" 
+                                                                                                class="signup-btn-mobile available" style="background:#f97316;">
+                                                                                                ➕ Add Supported Vol (${slotsLeft} left)
+                                                                                            </button>
+                                                                                        ` : ''}
                                                                                     </div>
                                                                                 `;
-                                                                            }).join('')}
-                                                                            ${!this.editingSignup || this.editingSignup.view !== this.currentView || this.editingSignup.dateStr !== d.date || this.editingSignup.roleId !== role.id ? `
-                                                                                <button onclick="app.selectedSlot={view:'${this.currentView}', dateStr:'${d.date}', roleId:'${role.id}'}; app.showModal=true; app.render();" 
-                                                                                        class="w-full text-left px-2 py-1 mb-1 text-xs font-semibold rounded transition-all
-                                                                                               ${slotsLeft > 0 
-                                                                                                 ? 'bg-green-50 border-2 border-green-400 text-green-700 hover:bg-green-100 hover:border-green-600' 
-                                                                                                 : 'bg-orange-50 border-2 border-orange-400 text-orange-700 hover:bg-orange-100'}">
-                                                                                    ${slotsLeft > 0 
-                                                                                      ? `✋ Sign me up! (${slotsLeft} ${slotsLeft === 1 ? 'spot' : 'spots'} left)` 
-                                                                                      : '⚠️ FULL - Add anyway?'}
-                                                                                </button>
-                                                                            ` : ''}
-                                                                        </td>
-                                                                    `;
-                                                                    }).join('')}
-                                                                    ${this.isAdmin ? `
-                                                                        <td class="p-2 md:p-3">
-                                                                            <input type="text" 
-                                                                                   placeholder="Add note..." 
-                                                                                   value="${this.getNote(this.currentView, d.date)}"
-                                                                                   onchange="app.saveNote('${this.currentView}', '${d.date}', this.value)"
-                                                                                   class="w-full p-1 text-xs border rounded" />
-                                                                        </td>
-                                                                    ` : ''}
-                                                                    ${this.isAdmin && this.currentView !== 'weekly-tasks' ? `
-                                                                        <td class="p-2 md:p-3 text-center">
-                                                                            <input type="checkbox" 
-                                                                                   ${this.isGiveawayEnabled(this.currentView, d.date) ? 'checked' : ''}
-                                                                                   onchange="app.toggleGiveaway('${this.currentView}', '${d.date}')"
-                                                                                   class="w-4 h-4" />
-                                                                        </td>
-                                                                    ` : ''}
-                                                                </tr>
-                                                            `}).join('')}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
+                                                                            }
 
-                                            </div> 
-        </div> 
-                                   ${isSpecialEvent ? `
-    <div class="mobile-special-event-view">
-        ${monthData.dates.map((d) => {
-            const dateClass = this.getDateClass(d.date);
-            const isNextShift = d.date === nextShiftDate;
-            const rolesForView = this.getVisibleRoles(this.currentView);
-            
-            return `
-                <div class="date-card ${dateClass}">
-                   <div class="date-card-header collapsed">
-    <div>
-        ${isNextShift ? '<div class="next-shift-badge" style="display:inline-block;margin-right:8px;">NEXT</div>' : ''}
-        <span>${d.label}</span>
-    </div>
-    <span class="chevron">▼</span>
-</div>
-                    <div class="date-card-content collapsed">
-                        ${rolesForView.map(role => {
-                            const signups = this.getSignups(this.currentView, d.date, role.id);
-                            const slotsLeft = role.capacity - signups.length;
-                            
-                            return `
-                                <div class="role-card-mobile">
-                                    <h4>${role.name}</h4>
-                                    <div class="time">${role.time} • ${slotsLeft} of ${role.capacity} spots left</div>
-                                    ${signups.length > 0 ? `
-                                        <div style="margin-bottom:12px;">
-                                            ${signups.map((signup, idx) => `
-                                                <div class="volunteer-item-mobile">
-                                                    <span>✓ ${signup.name}</span>
-                                                    <button onclick="app.removeSignup('${this.currentView}','${d.date}','${role.id}',app.getSignups('${this.currentView}','${d.date}','${role.id}')[${idx}]);" style="background:none;border:none;color:#ef4444;font-size:18px;cursor:pointer;">✕</button>
-                                                </div>
-                                            `).join('')}
+                                                                            return `
+                                                                                <div class="role-card-mobile">
+                                                                                    <h4>${role.name}</h4>
+                                                                                    <div class="time">${role.time} • ${slotsLeft} of ${role.capacity} spots left</div>
+                                                                                    ${signups.length > 0 ? `
+                                                                                        <div style="margin-bottom:12px;">
+                                                                                            ${signups.map((signup, idx) => `
+                                                                                                <div class="volunteer-item-mobile">
+                                                                                                    <span>✓ ${signup.name}</span>
+                                                                                                    <button onclick="app.removeSignup('${this.currentView}','${d.date}','${role.id}',app.getSignups('${this.currentView}','${d.date}','${role.id}')[${idx}]);" style="background:none;border:none;color:#ef4444;font-size:18px;cursor:pointer;">✕</button>
+                                                                                                </div>
+                                                                                            `).join('')}
+                                                                                        </div>
+                                                                                    ` : ''}
+                                                                                    <button onclick="app.selectedSlot={view:'${this.currentView}',dateStr:'${d.date}',roleId:'${role.id}'};app.showModal=true;app.render();" 
+                                                                                        class="signup-btn-mobile ${slotsLeft > 0 ? 'available' : 'full'}">
+                                                                                        ${slotsLeft > 0 ? '✋ Sign Me Up! (' + slotsLeft + ' left)' : '⚠️ FULL - Add Anyway?'}
+                                                                                    </button>
+                                                                                </div>
+                                                                            `;
+                                                                        }).join('')}
+                                                                    </div>
+                                                                </div>
+                                                            `;
+                                                        }).join('')}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
                                         </div>
-                                    ` : ''}
-                                    <button onclick="app.selectedSlot={view:'${this.currentView}',dateStr:'${d.date}',roleId:'${role.id}'};app.showModal=true;app.render();" 
-                                        class="signup-btn-mobile ${slotsLeft > 0 ? 'available' : 'full'}">
-                                        ${slotsLeft > 0 ? '✋ Sign Me Up! (' + slotsLeft + ' left)' : '⚠️ FULL - Add Anyway?'}
-                                    </button>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }).join('')}
-    </div>
-` : ''}
-                                        </div> 
                                     </div>
                                 `;
                             }).join('')}
                         </div>
                     </div>
-                </div>
-         </div>
 
-        ${this.showModal ? `
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-                    <h3 class="text-2xl font-bold mb-2">Sign Up</h3>
-                    <input type="text" 
-                           placeholder="Enter your full name" 
-                           value="${this.volunteerName || ''}"
-                           oninput="app.volunteerName=this.value"
-                           class="w-full p-3 border-2 border-gray-300 rounded-lg mb-4 text-lg focus:border-blue-500 outline-none"
-                           autofocus />
-                    <div class="flex gap-2">
-                        <button onclick="app.addSignup()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold">Confirm</button>
-                        <button onclick="app.showModal=false; app.render();" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg">Cancel</button>
-                    </div>
-                </div>
-            </div>` : ''}
-    `;
-},
-
-renderAdmin() {
-    const stats = this.generateReport();
-    return `
-        <div class="min-h-screen bg-gray-100 p-4">
-            <div class="max-w-6xl mx-auto">
-                <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h1 class="text-3xl font-bold">Admin Dashboard</h1>
-                        <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Volunteer View</button>
-                    </div>
-                    <div class="flex gap-2 mb-6 border-b pb-4">
-                        <button onclick="app.adminView='dashboard'; app.render();" 
-                                class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
-                            📊 Dashboard
-                        </button>
-                        <button onclick="app.adminView='volunteers'; app.render();" 
-                                class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
-                            👥 Volunteers
-                        </button>
-                        <button onclick="app.adminView='events'; app.render();" 
-                                class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'events' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
-                            🗓️ Special Events
-                        </button>
-                    </div>
-
-                    ${this.adminView === 'dashboard' ? `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                            <div class="p-4 bg-blue-50 rounded-lg">
-                                <div class="text-3xl font-bold text-blue-600">${stats.totalSignups}</div>
-                                <div class="text-gray-600">Total Signups</div>
+                    ${this.showModal ? `
+                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                            <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+                                <h3 class="text-2xl font-bold mb-2">Sign Up</h3>
+                                <input type="text" 
+                                       placeholder="Enter your full name" 
+                                       value="${this.volunteerName || ''}"
+                                       oninput="app.volunteerName=this.value"
+                                       class="w-full p-3 border-2 border-gray-300 rounded-lg mb-4 text-lg focus:border-blue-500 outline-none"
+                                       autofocus />
+                                <div class="flex gap-2">
+                                    <button onclick="app.addSignup()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold">Confirm</button>
+                                    <button onclick="app.showModal=false; app.render();" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg">Cancel</button>
+                                </div>
                             </div>
-                            <div class="p-4 bg-green-50 rounded-lg">
-                                <div class="text-3xl font-bold text-green-600">${stats.volunteerList.size}</div>
-                                <div class="text-gray-600">Unique Volunteers</div>
-                            </div>
-                        </div>
+                        </div>` : ''}
+                `;
+            },
 
-                        <div class="mb-6">
-                            <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="p-4 bg-blue-50 rounded-lg">
-                                    <h4 class="font-bold text-blue-900 mb-3">👔 Top Meal Managers</h4>
-                                    <div class="space-y-1">
-                                        ${stats.topByRole.managers.length > 0 ? stats.topByRole.managers.map(([name, count], i) => `
-                                            <div class="flex justify-between text-sm">
-                                                <span>${i+1}. ${name}</span>
-                                                <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                            </div>
-                                      `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+            renderAdmin() {
+                const stats = this.generateReport();
+                return `
+                    <div class="min-h-screen bg-gray-100 p-4">
+                        <div class="max-w-6xl mx-auto">
+                            <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+                                    <button onclick="app.currentView='welcome'; app.render();" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Volunteer View</button>
+                                </div>
+                                <div class="flex gap-2 mb-6 border-b pb-4">
+                                    <button onclick="app.adminView='dashboard'; app.render();" 
+                                            class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                                        📊 Dashboard
+                                    </button>
+                                    <button onclick="app.adminView='volunteers'; app.render();" 
+                                            class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'volunteers' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                                        👥 Volunteers
+                                    </button>
+                                    <button onclick="app.adminView='events'; app.render();" 
+                                            class="px-4 py-2 rounded-lg font-semibold ${this.adminView === 'events' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                                        🗓️ Special Events
+                                    </button>
+                                </div>
+
+                                ${this.adminView === 'dashboard' ? `
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                        <div class="p-4 bg-blue-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-blue-600">${stats.totalSignups}</div>
+                                            <div class="text-gray-600">Total Signups</div>
+                                        </div>
+                                        <div class="p-4 bg-green-50 rounded-lg">
+                                            <div class="text-3xl font-bold text-green-600">${stats.volunteerList.size}</div>
+                                            <div class="text-gray-600">Unique Volunteers</div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div class="p-4 bg-green-50 rounded-lg">
-                                    <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
-                                    <div class="space-y-1">
-                                        ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
-                                            <div class="flex justify-between text-sm">
-                                                <span>${i+1}. ${name}</span>
-                                                <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                            </div>
-                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                    </div>
-                                </div>
-
-                                <div class="p-4 bg-purple-50 rounded-lg">
-                                    <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks</h4>
-                                    <div class="space-y-1">
-                                        ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
-                                            <div class="flex justify-between text-sm">
-                                                <span>${i+1}. ${name}</span>
-                                                <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                            </div>
-                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                    </div>
-                                </div>
-
-                                <div class="p-4 bg-yellow-50 rounded-lg">
-                                    <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
-                                    <div class="space-y-1">
-                                        ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
-                                            <div class="flex justify-between text-sm">
-                                                <span>${i+1}. ${name}</span>
-                                                <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
-                                            </div>
-                                        `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
-                                📊 Export to CSV
-                            </button>
-                            <button onclick="app.downloadBackup()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
-                                💾 Download Backup
-                            </button>
-                            <button onclick="app.uploadBackup()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
-                                📂 Upload Backup
-                            </button>
-                            <button onclick="app.addNextQuarter()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
-                                ➕ Add Next Quarter
-                            </button>
-                        </div>
-                    ` : this.adminView === 'volunteers' ? `
-                        <div class="space-y-6">
-                            <div class="p-4 bg-blue-50 rounded-lg">
-                                <h3 class="text-lg font-bold text-blue-900 mb-3">👔 Managers (${stats.volunteersByRole.managers.size})</h3>
-                                <div class="text-sm text-blue-800">
-                                    ${Array.from(stats.volunteersByRole.managers).sort().join(', ') || 'None'}
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-green-50 rounded-lg">
-                                <h3 class="text-lg font-bold text-green-900 mb-3">🤝 Hall Help (${stats.volunteersByRole.hallHelp.size})</h3>
-                                <div class="text-sm text-green-800">
-                                    ${Array.from(stats.volunteersByRole.hallHelp).sort().join(', ') || 'None'}
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-purple-50 rounded-lg">
-                                <h3 class="text-lg font-bold text-purple-900 mb-3">🥤 Drinks Trolley (${stats.volunteersByRole.drinks.size})</h3>
-                                <div class="text-sm text-purple-800">
-                                    ${Array.from(stats.volunteersByRole.drinks).sort().join(', ') || 'None'}
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-yellow-50 rounded-lg">
-                                <h3 class="text-lg font-bold text-yellow-900 mb-3">🍽️ Dishes (${stats.volunteersByRole.dishes.size})</h3>
-                                <div class="text-sm text-yellow-800">
-                                    ${Array.from(stats.volunteersByRole.dishes).sort().join(', ') || 'None'}
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-pink-50 rounded-lg">
-                                <h3 class="text-lg font-bold text-pink-900 mb-3">🧺 Laundry (${stats.volunteersByRole.laundry.size})</h3>
-                                <div class="text-sm text-pink-800">
-                                    ${Array.from(stats.volunteersByRole.laundry).sort().join(', ') || 'None'}
-                                </div>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-2xl font-bold">Special Events</h3>
-                                <button onclick="app.editingEvent='new'; app.newEventRoles=[{id:'managers',name:'Managers',time:'',capacity:2},{id:'volunteers',name:'Volunteers',time:'',capacity:10}]; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                    ➕ Create Event
-                                </button>
-                            </div>
-                            ${this.editingEvent ? (() => {
-                                const isNew = this.editingEvent === 'new';
-                                const event = isNew ? null : this.specialEvents.find(e => e.id === this.editingEvent);
-                                
-                                return `
-                                    <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                                        <h4 class="font-bold mb-4 text-lg">${isNew ? 'Create New Event' : 'Edit Event'}</h4>
-                                        <div class="space-y-4">
-                                    
-                                            <div>
-                                                <label class="block font-semibold text-sm text-gray-700 mb-1">Event Name</label>
-                                                <input type="text" id="newEventName" placeholder="e.g. Monthly Bulk Cook" 
-                                                       value="${isNew ? '' : event.name}" 
-                                                       class="w-full p-2 border rounded-lg" />
-                                            </div>
-                                            
-                                            <div class="border-2 border-dashed border-blue-300 rounded-lg p-4 bg-white">
-                                                <label class="font-semibold text-sm text-blue-900 mb-2 block">Event Dates</label>
-                                                <div id="eventDates" class="space-y-2 mb-3">
-                                                    ${isNew ? `
-                                                        <div class="flex gap-2">
-                                                            <input type="date" class="event-date-input flex-1 p-2 border rounded-lg" />
-                                                            <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200">✕</button>
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold mb-3">Top Volunteers by Role</h3>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="p-4 bg-blue-50 rounded-lg">
+                                                <h4 class="font-bold text-blue-900 mb-3">👔 Top Meal Managers</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.managers.length > 0 ? stats.topByRole.managers.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
                                                         </div>
-                                                    ` : event.dates.map(d => `
-                                                        <div class="flex gap-2">
-                                                            <input type="date" value="${d}" class="event-date-input flex-1 p-2 border rounded-lg" />
-                                                            <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200">✕</button>
-                                                        </div>
-                                                    `).join('')}
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
                                                 </div>
-                                                <button onclick="app.addEventDate()" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200">
-                                                    ➕ Add Another Date
-                                                </button>
                                             </div>
+                                            <div class="p-4 bg-green-50 rounded-lg">
+                                                <h4 class="font-bold text-green-900 mb-3">🤝 Top Hall Help</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.hallHelp.length > 0 ? stats.topByRole.hallHelp.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+                                            <div class="p-4 bg-purple-50 rounded-lg">
+                                                <h4 class="font-bold text-purple-900 mb-3">🥤 Top Drinks</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.drinks.length > 0 ? stats.topByRole.drinks.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+                                            <div class="p-4 bg-yellow-50 rounded-lg">
+                                                <h4 class="font-bold text-yellow-900 mb-3">🍽️ Top Dishes</h4>
+                                                <div class="space-y-1">
+                                                    ${stats.topByRole.dishes.length > 0 ? stats.topByRole.dishes.map(([name, count], i) => `
+                                                        <div class="flex justify-between text-sm">
+                                                            <span>${i+1}. ${name}</span>
+                                                            <span class="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">${count}</span>
+                                                        </div>
+                                                    `).join('') : '<p class="text-sm text-gray-600">No data</p>'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        <button onclick="app.exportToCSV()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">📊 Export to CSV</button>
+                                        <button onclick="app.downloadBackup()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">💾 Download Backup</button>
+                                        <button onclick="app.uploadBackup()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">📂 Upload Backup</button>
+                                        <button onclick="app.addNextQuarter()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">➕ Add Next Quarter</button>
+                                    </div>
+                                ` : this.adminView === 'volunteers' ? `
+                                    <div class="space-y-6">
+                                        <div class="p-4 bg-blue-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-blue-900 mb-3">👔 Managers (${stats.volunteersByRole.managers.size})</h3>
+                                            <div class="text-sm text-blue-800">${Array.from(stats.volunteersByRole.managers).sort().join(', ') || 'None'}</div>
+                                        </div>
+                                        <div class="p-4 bg-green-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-green-900 mb-3">🤝 Hall Help (${stats.volunteersByRole.hallHelp.size})</h3>
+                                            <div class="text-sm text-green-800">${Array.from(stats.volunteersByRole.hallHelp).sort().join(', ') || 'None'}</div>
+                                        </div>
+                                        <div class="p-4 bg-purple-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-purple-900 mb-3">🥤 Drinks Trolley (${stats.volunteersByRole.drinks.size})</h3>
+                                            <div class="text-sm text-purple-800">${Array.from(stats.volunteersByRole.drinks).sort().join(', ') || 'None'}</div>
+                                        </div>
+                                        <div class="p-4 bg-yellow-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-yellow-900 mb-3">🍽️ Dishes (${stats.volunteersByRole.dishes.size})</h3>
+                                            <div class="text-sm text-yellow-800">${Array.from(stats.volunteersByRole.dishes).sort().join(', ') || 'None'}</div>
+                                        </div>
+                                        <div class="p-4 bg-pink-50 rounded-lg">
+                                            <h3 class="text-lg font-bold text-pink-900 mb-3">🧺 Laundry (${stats.volunteersByRole.laundry.size})</h3>
+                                            <div class="text-sm text-pink-800">${Array.from(stats.volunteersByRole.laundry).sort().join(', ') || 'None'}</div>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div class="p-6">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h3 class="text-2xl font-bold">Special Events</h3>
+                                            <button onclick="app.editingEvent='new'; app.newEventRoles=[{id:'managers',name:'Managers',time:'',capacity:2},{id:'volunteers',name:'Volunteers',time:'',capacity:10}]; app.render();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                                ➕ Create Event
+                                            </button>
+                                        </div>
+                                        ${this.editingEvent ? (() => {
+                                            const isNew = this.editingEvent === 'new';
+                                            const event = isNew ? null : this.specialEvents.find(e => e.id === this.editingEvent);
                                             
-                                            <div class="border-2 border-dashed border-purple-300 rounded-lg p-4 bg-white">
-                                                <label class="font-semibold text-sm text-purple-900 mb-3 block">Volunteer Roles</label>
-                                                <div id="eventRoles" class="space-y-3 mb-3">
-                                                    ${(this.newEventRoles || []).map((role, idx) => `
-                                                        <div class="role-config-item flex gap-2 p-3 bg-gray-50 rounded-lg">
-                                                            <div class="flex-1">
-                                                                <input type="text" 
-                                                                       value="${role.name}" 
-                                                                       placeholder="Role name (e.g. Managers)" 
-                                                                       class="role-name w-full p-2 border rounded mb-2 font-semibold"
-                                                                       onchange="app.newEventRoles[${idx}].name = this.value; app.newEventRoles[${idx}].id = this.value.toLowerCase().replace(/\\s+/g, '-');" />
-                                                                <div class="flex gap-2">
-                                                                    <input type="text" 
-                                                                           value="${role.time}" 
-                                                                           placeholder="Time (e.g. 9am-12pm)" 
-                                                                           class="role-time flex-1 p-2 border rounded text-sm"
-                                                                           onchange="app.newEventRoles[${idx}].time = this.value;" />
-                                                                    <input type="number" 
-                                                                           value="${role.capacity}" 
-                                                                           placeholder="Capacity" 
-                                                                           min="1" 
-                                                                           class="role-capacity w-20 p-2 border rounded text-sm"
-                                                                           onchange="app.newEventRoles[${idx}].capacity = parseInt(this.value) || 1;" />
-                                                                </div>
+                                            return `
+                                                <div class="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                                    <h4 class="font-bold mb-4 text-lg">${isNew ? 'Create New Event' : 'Edit Event'}</h4>
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="block font-semibold text-sm text-gray-700 mb-1">Event Name</label>
+                                                            <input type="text" id="newEventName" placeholder="e.g. Monthly Bulk Cook" 
+                                                                   value="${isNew ? '' : event.name}" 
+                                                                   class="w-full p-2 border rounded-lg" />
+                                                        </div>
+                                                        
+                                                        <div class="border-2 border-dashed border-blue-300 rounded-lg p-4 bg-white">
+                                                            <label class="font-semibold text-sm text-blue-900 mb-2 block">Event Dates</label>
+                                                            <div id="eventDates" class="space-y-2 mb-3">
+                                                                ${isNew ? `
+                                                                    <div class="flex gap-2">
+                                                                        <input type="date" class="event-date-input flex-1 p-2 border rounded-lg" />
+                                                                        <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200">✕</button>
+                                                                    </div>
+                                                                ` : event.dates.map(d => `
+                                                                    <div class="flex gap-2">
+                                                                        <input type="date" value="${d}" class="event-date-input flex-1 p-2 border rounded-lg" />
+                                                                        <button onclick="this.parentElement.remove();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200">✕</button>
+                                                                    </div>
+                                                                `).join('')}
                                                             </div>
-                                                            <button onclick="app.newEventRoles.splice(${idx}, 1); app.render();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 self-start">✕</button>
+                                                            <button onclick="app.addEventDate()" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200">
+                                                                ➕ Add Another Date
+                                                            </button>
                                                         </div>
-                                                    `).join('')}
-                                                </div>
-                                                <button onclick="
-                                                    if(!app.newEventRoles) app.newEventRoles = [];
-                                                    app.newEventRoles.push({id:'role-' + Date.now(), name:'', time:'', capacity:1});
-                                                    app.render();
-                                                " class="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200">
-                                                    ➕ Add Another Role
-                                                </button>
-                                            </div>
-                                            
-                                            <div class="flex items-center gap-2 p-3 bg-white border rounded-lg">
-                                                <input type="checkbox" id="eventVisible" ${isNew || event.visible ? 'checked' : ''} class="w-4 h-4" />
-                                                <label for="eventVisible" class="text-sm font-semibold">Show event on welcome screen</label>
-                                            </div>
-                                        
-                                            <div class="flex gap-2">
-                                                <button onclick="
-                                                    const name = document.getElementById('newEventName').value.trim();
-                                                    const dateInputs = document.querySelectorAll('.event-date-input');
-                                                    const dates = Array.from(dateInputs)
-                                                        .map(input => input.value)
-                                                        .filter(date => date)
-                                                        .sort();
-                                                    const visible = document.getElementById('eventVisible').checked;
+                                                        
+                                                        <div class="border-2 border-dashed border-purple-300 rounded-lg p-4 bg-white">
+                                                            <label class="font-semibold text-sm text-purple-900 mb-3 block">Volunteer Roles</label>
+                                                            <div id="eventRoles" class="space-y-3 mb-3">
+                                                                ${(this.newEventRoles || []).map((role, idx) => `
+                                                                    <div class="role-config-item flex gap-2 p-3 bg-gray-50 rounded-lg">
+                                                                        <div class="flex-1">
+                                                                            <input type="text" 
+                                                                                   value="${role.name}" 
+                                                                                   placeholder="Role name (e.g. Managers)" 
+                                                                                   class="role-name w-full p-2 border rounded mb-2 font-semibold"
+                                                                                   onchange="app.newEventRoles[${idx}].name = this.value; app.newEventRoles[${idx}].id = this.value.toLowerCase().replace(/\\s+/g, '-');" />
+                                                                            <div class="flex gap-2">
+                                                                                <input type="text" 
+                                                                                       value="${role.time}" 
+                                                                                       placeholder="Time (e.g. 9am-12pm)" 
+                                                                                       class="role-time flex-1 p-2 border rounded text-sm"
+                                                                                       onchange="app.newEventRoles[${idx}].time = this.value;" />
+                                                                                <input type="number" 
+                                                                                       value="${role.capacity}" 
+                                                                                       placeholder="Capacity" 
+                                                                                       min="1" 
+                                                                                       class="role-capacity w-20 p-2 border rounded text-sm"
+                                                                                       onchange="app.newEventRoles[${idx}].capacity = parseInt(this.value) || 1;" />
+                                                                            </div>
+                                                                        </div>
+                                                                        <button onclick="app.newEventRoles.splice(${idx}, 1); app.render();" class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 self-start">✕</button>
+                                                                    </div>
+                                                                `).join('')}
+                                                            </div>
+                                                            <button onclick="
+                                                                if(!app.newEventRoles) app.newEventRoles = [];
+                                                                app.newEventRoles.push({id:'role-' + Date.now(), name:'', time:'', capacity:1});
+                                                                app.render();
+                                                            " class="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200">
+                                                                ➕ Add Another Role
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center gap-2 p-3 bg-white border rounded-lg">
+                                                            <input type="checkbox" id="eventVisible" ${isNew || event.visible ? 'checked' : ''} class="w-4 h-4" />
+                                                            <label for="eventVisible" class="text-sm font-semibold">Show event on welcome screen</label>
+                                                        </div>
                                                     
-                                                    if(!name) {
-                                                        alert('Please enter an event name');
-                                                        return;
-                                                    }
-                                                    if(dates.length === 0) {
-                                                        alert('Please add at least one date');
-                                                        return;
-                                                    }
-                                                    
-                                                    const roles = (app.newEventRoles || [])
-                                                        .filter(r => r.name.trim())
-                                                        .map(r => ({
-                                                            id: r.id || r.name.toLowerCase().replace(/\s+/g, '-'),
-                                                            name: r.name.trim(),
-                                                            time: r.time.trim() || 'TBD',
-                                                            capacity: parseInt(r.capacity) || 1
-                                                        }));
-                                                    
-                                                    if(roles.length === 0) {
-                                                        alert('Please add at least one role');
-                                                        return;
-                                                    }
-                                                    
-                                                    ${isNew ? `
-                                                        app.createSpecialEvent(name, dates, roles, visible);
-                                                    ` : `
-                                                        app.updateSpecialEvent('${event ? event.id : ''}', name, dates, roles, visible);
-                                                    `}
-                                                    app.editingEvent = null;
-                                                    app.newEventRoles = null;
-                                                    app.render();
-                                                " class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold">
-                                                    ✓ ${isNew ? 'Create Event' : 'Update Event'}
-                                                </button>
-                                                <button onclick="app.editingEvent=null; app.newEventRoles=null; app.render();" class="flex-1 bg-gray-300 py-3 rounded-lg hover:bg-gray-400 font-semibold">
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            })() : ''}
-
-                            <div class="space-y-4">
-                                ${this.specialEvents.length === 0 ? `
-                                    <div class="text-center py-8 text-gray-500">
-                                        <p class="text-lg mb-2">No special events yet</p>
-                                        <p class="text-sm">Click "Create Event" to add your first one</p>
-                                    </div>
-                                ` : ''}
-                                
-                                ${this.specialEvents.map(event => `
-                                    <div class="p-4 border-2 rounded-lg ${event.visible ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-300'}">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <div class="flex-1">
-                                                <h4 class="text-lg font-bold mb-1">${event.name}</h4>
-                                                <p class="text-sm text-gray-600 mb-2">
-                                                    ${event.dates.length} date${event.dates.length !== 1 ? 's' : ''}: 
-                                                    ${event.dates.map(d => {
-                                                        const [y, m, day] = d.split('-').map(Number);
-                                                        const date = new Date(y, m - 1, day);
-                                                        return date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
-                                                    }).join(', ')}
-                                                </p>
-                                                <div class="flex gap-2 flex-wrap">
-                                                    ${event.roles.map(role => `
-                                                        <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
-                                                            ${role.name} (${role.capacity}) ${role.time !== 'TBD' ? '• ' + role.time : ''}
-                                                        </span>
-                                                    `).join('')}
-                                                </div>
-                                            </div>
-                                            <div class="flex gap-2 ml-4">
-                                                <button onclick="app.editSpecialEvent('${event.id}');" 
-                                                        class="p-2 text-blue-600 bg-blue-50 rounded hover:bg-blue-100"
-                                                        title="Edit event">
-                                                    ✏️ Edit
-                                                </button>
-                                                <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
-                                                        class="p-2 ${event.visible ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'} rounded hover:opacity-80" 
-                                                        title="${event.visible ? 'Visible to volunteers' : 'Hidden from volunteers'}">
-                                                    ${event.visible ? '👁️ Visible' : '👁️‍🗨️ Hidden'}
-                                                </button>
-                                                <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
-                                                        class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div class="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
-                                            ${event.dates.map(dateStr => {
-                                                const signups = app.signups[event.id]?.[dateStr] || {};
-                                                const totalSlots = event.roles.reduce((sum, r) => sum + r.capacity, 0);
-                                                const filledSlots = Object.values(signups).reduce((sum, arr) => sum + arr.length, 0);
-                                                const coverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
-                                                
-                                                const [y, m, day] = dateStr.split('-').map(Number);
-                                                const date = new Date(y, m - 1, day);
-                                                const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
-                                                
-                                                return `
-                                                    <div class="p-2 bg-gray-50 rounded">
-                                                        <div class="font-semibold text-gray-700">${dateLabel}</div>
-                                                        <div class="text-xs ${coverage >= 90 ? 'text-green-600' : coverage >= 60 ? 'text-yellow-600' : 'text-red-600'}">
-                                                            ${filledSlots}/${totalSlots} (${coverage}%)
+                                                        <div class="flex gap-2">
+                                                            <button onclick="
+                                                                const name = document.getElementById('newEventName').value.trim();
+                                                                const dateInputs = document.querySelectorAll('.event-date-input');
+                                                                const dates = Array.from(dateInputs).map(input => input.value).filter(date => date).sort();
+                                                                const visible = document.getElementById('eventVisible').checked;
+                                                                
+                                                                if(!name) { alert('Please enter an event name'); return; }
+                                                                if(dates.length === 0) { alert('Please add at least one date'); return; }
+                                                                
+                                                                const roles = (app.newEventRoles || [])
+                                                                    .filter(r => r.name.trim())
+                                                                    .map(r => ({
+                                                                        id: r.id || r.name.toLowerCase().replace(/\s+/g, '-'),
+                                                                        name: r.name.trim(),
+                                                                        time: r.time.trim() || 'TBD',
+                                                                        capacity: parseInt(r.capacity) || 1
+                                                                    }));
+                                                                
+                                                                if(roles.length === 0) { alert('Please add at least one role'); return; }
+                                                                
+                                                                ${isNew ? `app.createSpecialEvent(name, dates, roles, visible);` : `app.updateSpecialEvent('${event ? event.id : ''}', name, dates, roles, visible);`}
+                                                                app.editingEvent = null;
+                                                                app.newEventRoles = null;
+                                                                app.render();
+                                                            " class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold">
+                                                                ✓ ${isNew ? 'Create Event' : 'Update Event'}
+                                                            </button>
+                                                            <button onclick="app.editingEvent=null; app.newEventRoles=null; app.render();" class="flex-1 bg-gray-300 py-3 rounded-lg hover:bg-gray-400 font-semibold">
+                                                                Cancel
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                `;
-                                            }).join('')}
+                                                </div>
+                                            `;
+                                        })() : ''}
+
+                                        <div class="space-y-4">
+                                            ${this.specialEvents.length === 0 ? `
+                                                <div class="text-center py-8 text-gray-500">
+                                                    <p class="text-lg mb-2">No special events yet</p>
+                                                    <p class="text-sm">Click "Create Event" to add your first one</p>
+                                                </div>
+                                            ` : ''}
+                                            
+                                            ${this.specialEvents.map(event => `
+                                                <div class="p-4 border-2 rounded-lg ${event.visible ? 'bg-white border-green-200' : 'bg-gray-50 border-gray-300'}">
+                                                    <div class="flex justify-between items-start mb-3">
+                                                        <div class="flex-1">
+                                                            <h4 class="text-lg font-bold mb-1">${event.name}</h4>
+                                                            <p class="text-sm text-gray-600 mb-2">
+                                                                ${event.dates.length} date${event.dates.length !== 1 ? 's' : ''}: 
+                                                                ${event.dates.map(d => {
+                                                                    const [y, m, day] = d.split('-').map(Number);
+                                                                    const date = new Date(y, m - 1, day);
+                                                                    return date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+                                                                }).join(', ')}
+                                                            </p>
+                                                            <div class="flex gap-2 flex-wrap">
+                                                                ${event.roles.map(role => `
+                                                                    <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
+                                                                        ${role.name} (${role.capacity}) ${role.time !== 'TBD' ? '• ' + role.time : ''}
+                                                                    </span>
+                                                                `).join('')}
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex gap-2 ml-4">
+                                                            <button onclick="app.editSpecialEvent('${event.id}');" 
+                                                                    class="p-2 text-blue-600 bg-blue-50 rounded hover:bg-blue-100" title="Edit event">
+                                                                ✏️ Edit
+                                                            </button>
+                                                            <button onclick="app.toggleEventVisibility('${event.id}'); app.render();" 
+                                                                    class="p-2 ${event.visible ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'} rounded hover:opacity-80" 
+                                                                    title="${event.visible ? 'Visible to volunteers' : 'Hidden from volunteers'}">
+                                                                ${event.visible ? '👁️ Visible' : '👁️‍🗨️ Hidden'}
+                                                            </button>
+                                                            <button onclick="if(confirm('Delete ${event.name}? This will remove all volunteer signups.')) { app.deleteSpecialEvent('${event.id}'); app.render(); }" 
+                                                                    class="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100">
+                                                                🗑️
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
+                                                        ${event.dates.map(dateStr => {
+                                                            const signups = app.signups[event.id]?.[dateStr] || {};
+                                                            const totalSlots = event.roles.reduce((sum, r) => sum + r.capacity, 0);
+                                                            const filledSlots = Object.values(signups).reduce((sum, arr) => sum + arr.length, 0);
+                                                            const coverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
+                                                            
+                                                            const [y, m, day] = dateStr.split('-').map(Number);
+                                                            const date = new Date(y, m - 1, day);
+                                                            const dateLabel = date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+                                                            
+                                                            return `
+                                                                <div class="p-2 bg-gray-50 rounded">
+                                                                    <div class="font-semibold text-gray-700">${dateLabel}</div>
+                                                                    <div class="text-xs ${coverage >= 90 ? 'text-green-600' : coverage >= 60 ? 'text-yellow-600' : 'text-red-600'}">
+                                                                        ${filledSlots}/${totalSlots} (${coverage}%)
+                                                                    </div>
+                                                                </div>
+                                                            `;
+                                                        }).join('')}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
                                         </div>
-                                    </div> 
-                                `).join('')}
+                                    </div>
+                                `}
                             </div>
-                        </div> 
-                    `}
-                </div>
-            </div>
-        </div>
-    `;
-}
-};
+                        </div>
+                    </div>
+                `;
+            }
+        };
 
 // CLICK LOGIC
 document.addEventListener('click', (e) => {
@@ -2433,6 +2348,6 @@ document.addEventListener('click', (e) => {
 
 // START
 app.init();
-</script>
+    </script>
 </body>
 </html>
